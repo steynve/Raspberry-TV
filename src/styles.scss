@@ -1,3 +1,4 @@
 @use './styles/base/reset.scss';
-@use './styles/base/typography.scss';
-@use './styles/fonts/metropolis/metropolis.scss';
+@use './styles/base/tokens.scss';
+@use './styles/components/widget.scss';
+@use './styles/components/station.scss';

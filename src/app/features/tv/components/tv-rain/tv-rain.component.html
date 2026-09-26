@@ -1,0 +1,22 @@
+<h2 class="widget-title"><app-icon name="umbrella" /> Next 2 hours</h2>
+
+<p class="summary">{{ summary() }}</p>
+
+<figure class="chart">
+    <svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+            <linearGradient id="rain-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop class="fill-top" offset="0" />
+                <stop class="fill-bottom" offset="1" />
+            </linearGradient>
+        </defs>
+        <path class="area" fill="url(#rain-fill)" [attr.d]="areaPath()" />
+        <path class="line" [attr.d]="linePath()" />
+    </svg>
+
+    <figcaption class="axis">
+        @for (label of axis(); track $index) {
+            <span>{{ label }}</span>
+        }
+    </figcaption>
+</figure>

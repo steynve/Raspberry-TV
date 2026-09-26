@@ -1,58 +1,49 @@
-<div class="weather">
-    @if (forecast(); as forecast) {
-        <section>
-            <span> {{ forecast.current_weather.temperature.toFixed() }} °C </span>
-            <figure>
-                <img [src]="weatherIcon()" alt="weather icon" />
-            </figure>
-        </section>
-    }
-    @if (sun().time) {
-        <section>
-            <span>
-                {{ sun().time }}
-            </span>
-            <figure>
-                <img src="/assets/images/feather/{{ sun().type }}.svg" class="custom" alt="sun" />
-            </figure>
-        </section>
-    }
-    @if (airQuality()) {
-        @if (pollenGroupScore('tree')) {
-            <section>
-                <span>{{ pollenGroupScore('tree') }}/10</span>
-                <figure>
-                    <img
-                        src="/assets/images/streamline/forest.svg"
-                        class="custom"
-                        alt="tree pollen icon"
-                    />
-                </figure>
-            </section>
+@if (forecast(); as forecast) {
+    <section class="widget now">
+        <h2 class="widget-title">Now</h2>
+
+        <div class="now-main">
+            <span class="now-temperature"
+                >{{ forecast.current_weather.temperature.toFixed() }}°</span
+            >
+            <p class="now-condition">
+                <app-icon class="now-icon" [name]="condition().icon" />
+                {{ condition().description }}
+            </p>
+        </div>
+
+        <ul class="now-details">
+            <li><app-icon name="wind" /> {{ wind() }}</li>
+            <li><app-icon name="bike" /> {{ trail() }}</li>
+            @if (uv(); as uv) {
+                <li class="now-uv"><app-icon name="sun" /> UV {{ uv }} · wear sunscreen</li>
+            }
+            @if (!rainExpected()) {
+                <li class="now-dry"><app-icon name="umbrella" /> Dry for the next 2 hours</li>
+            }
+        </ul>
+
+        @if (pollen().length) {
+            <ul class="pollen">
+                @for (item of pollen(); track item.group) {
+                    <li
+                        class="pollen-item"
+                        [class.none]="!item.score"
+                        [style.--level]="item.score / 10"
+                    >
+                        <app-icon [name]="item.icon" />
+                        {{ item.label }}
+                        <span class="pollen-score">{{ item.score }}</span>
+                    </li>
+                }
+            </ul>
         }
-        @if (pollenGroupScore('grass')) {
-            <section>
-                <span>{{ pollenGroupScore('grass') }}/10</span>
-                <figure>
-                    <img
-                        src="/assets/images/streamline/grass.svg"
-                        class="custom"
-                        alt="grass pollen icon"
-                    />
-                </figure>
-            </section>
-        }
-        @if (pollenGroupScore('weed')) {
-            <section>
-                <span>{{ pollenGroupScore('weed') }}/10</span>
-                <figure>
-                    <img
-                        src="/assets/images/streamline/allergy.svg"
-                        class="custom"
-                        alt="weed pollen icon"
-                    />
-                </figure>
-            </section>
-        }
+    </section>
+
+    <!-- Only takes the centre of the screen when there is rain to show -->
+    @if (rainExpected()) {
+        <app-tv-rain class="widget rain" [slots]="rain()" />
     }
-</div>
+
+    <app-tv-forecast class="widget week" [daily]="forecast.daily" />
+}

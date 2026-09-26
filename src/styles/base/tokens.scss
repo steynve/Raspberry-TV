@@ -1,0 +1,62 @@
+/* Registered, so it can be transitioned: how much the photo is darkened (0 to 1) */
+@property --dim {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0.15;
+}
+
+:root {
+    /* One knob for the size of everything: text, icons, spacing and cards are all in rem.
+       0.8 makes body text on a 50" TV at 2.5 m look as big as 14px text on a 27" 1440p
+       monitor at 60 cm (both about 19 arcminutes). Try 0.85 for bigger, 0.75 for smaller. */
+    --ui-scale: 0.8;
+
+    /* The root size fits the UI to any screen: 16px × the scale on a 1920×1080 TV, twice that
+       on 4K, and it never overflows other aspect ratios */
+    font-size: calc(min(100vw / 120, 100vh / 67.5) * var(--ui-scale));
+
+    /* Type scale, in px on the 1080p TV at a scale of 0.8 */
+    --text-label: 1.5rem; /* 19px, uppercase widget titles */
+    --text-meta: 1.625rem; /* 21px, secondary lines */
+    --text-body: 1.875rem; /* 24px */
+    --text-lead: 2.25rem; /* 29px, the one sentence that matters in a widget */
+    --text-title: 2.75rem; /* 35px, the song */
+    --text-display: 5.5rem; /* 70px, the temperature */
+    --text-clock: 11rem; /* 141px */
+
+    --font-sans: 'Geist Variable', system-ui, sans-serif;
+    --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+    --fg: oklch(0.98 0.005 95);
+    /* Secondary text needs more contrast from the couch than on a desk */
+    --fg-muted: oklch(0.98 0.005 95 / 0.8);
+    --fg-subtle: oklch(0.98 0.005 95 / 0.62);
+    --shadow-text: 0 0.125rem 1.5rem oklch(0 0 0 / 0.35);
+
+    --glass-bg: oklch(0.16 0.01 95 / 0.5);
+    --glass-edge: oklch(1 0 0 / 0.1);
+    --glass-highlight: oklch(1 0 0 / 0.08);
+    /* The channel sheet moves, so it can't use the photo glass, see tv-radio.component.scss */
+    --sheet-bg: linear-gradient(oklch(0.19 0.01 95), oklch(0.14 0.01 95));
+
+    --radius-lg: 1.75rem;
+    --radius-md: 1rem;
+    --edge: 3.5rem;
+    --gap: 1.5rem;
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+    /* Overridden per photo on the wallpaper, see tv-wallpaper.component.scss */
+    --accent: oklch(0.86 0.07 145);
+    --rain: oklch(0.78 0.11 235);
+    --cold: oklch(0.8 0.09 230);
+    --mild: oklch(0.87 0.1 110);
+    --warm: oklch(0.78 0.14 55);
+}
+
+html {
+    font-family: var(--font-sans);
+    line-height: 1.4;
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}

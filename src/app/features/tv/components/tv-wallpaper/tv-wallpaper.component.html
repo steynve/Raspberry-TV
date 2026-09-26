@@ -1,7 +1,11 @@
 <section
     class="tv-wallpaper"
     [style.background-image]="currentBackgroundImage()"
-    [class.hidden]="hidden()"
+    [style.--photo-color]="currentPhoto()?.avg_color"
+    [style.--photo-blurred]="blurredBackgroundImage()"
+    [class.night]="night()"
+    [class.idle]="idle()"
 >
+    <div class="idle-dim"></div>
     <ng-content />
 </section>

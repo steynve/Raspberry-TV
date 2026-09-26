@@ -1,0 +1,35 @@
+#!/bin/sh
+# The kiosk session, started by ~/.bash_profile. Installed as ~/.xinitrc by setup.sh.
+
+# Keep the TV on
+xset -dpms
+xset s off
+xset s noblank
+
+# pi/hdmicec.sh signals the app with F13 (wake) and F14 (sleep). They have no key in the default
+# keymap, and Chromium can't name a key without one, so give them their standard keycodes.
+xmodmap -e "keycode 191 = F13" -e "keycode 192 = F14"
+
+# Chromium is called chromium-browser on Raspberry Pi OS 11 and chromium from 12 on
+BROWSER=$(command -v chromium-browser || command -v chromium)
+
+# Start the browser again if it ever quits or crashes.
+# The DevTools port only listens on localhost: reach it through an SSH tunnel, see the README.
+while true; do
+    "$BROWSER" http://localhost/ \
+        --kiosk \
+        --window-size=1920,1080 \
+        --window-position=0,0 \
+        --incognito \
+        --noerrdialogs \
+        --no-first-run \
+        --disable-translate \
+        --disable-features=TranslateUI \
+        --disk-cache-dir=/dev/null \
+        --overscroll-history-navigation=0 \
+        --disable-pinch \
+        --autoplay-policy=no-user-gesture-required \
+        --check-for-update-interval=31536000 \
+        --remote-debugging-port=9222
+    sleep 2
+done

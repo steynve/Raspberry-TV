@@ -1,0 +1,9 @@
+# Starts the kiosk on the TV. Installed as ~/.bash_profile by setup.sh.
+# tty1 logs in automatically, see setup.sh.
+if [ -z "$DISPLAY" ] && [ "$(tty)" = /dev/tty1 ]; then
+    # Turns TV remote buttons into key presses, started only once
+    pgrep -x cec-client > /dev/null || (cec-client | /usr/local/bin/raspberry-cec) &
+
+    # exec: when X stops, this login ends and the automatic login starts the kiosk again
+    exec startx -- -nocursor
+fi

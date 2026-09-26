@@ -1,0 +1,22 @@
+@if (sun(); as sun) {
+    <p class="sky">
+        @switch (sun.phase) {
+            @case ('night') {
+                <svg class="moon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="moon-dark" cx="12" cy="12" r="10" />
+                    <path class="moon-lit" [attr.d]="moonPath()" />
+                </svg>
+            }
+            @case ('golden-hour') {
+                <app-icon class="sun golden" name="sunset" />
+            }
+            @default {
+                <app-icon class="sun" name="sun" />
+            }
+        }
+        {{ text() }}
+        @if (aurora(); as aurora) {
+            <span class="aurora"><app-icon name="sparkles" /> {{ aurora }}</span>
+        }
+    </p>
+}

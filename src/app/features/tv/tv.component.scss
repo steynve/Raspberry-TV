@@ -1,24 +1,58 @@
-@use 'variables' as *;
-
 .tv {
-    height: 100%;
-    width: 100%;
+    // Above the wallpaper's idle dimming
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template:
+        'clock . radio' auto
+        '. . .' 1fr
+        'weather weather weather' auto
+        / auto 1fr auto;
+    block-size: 100%;
+    padding: var(--edge);
+    gap: var(--gap);
+
+    // Dims the whole scene behind the channel list, which sits above it (z-index 2)
+    &::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        background-color: oklch(0 0 0 / 0.5);
+        opacity: 0;
+        transition: opacity 0.2s var(--ease-out);
+    }
+
+    &.overlay::before {
+        opacity: 1;
+    }
+
+    // Idle: the dashboard fades out slowly, and comes back quickly on a key press.
+    // Opacity only, which the Pi's GPU handles without repainting.
+    > :is(.tv-clock, .tv-radio, .tv-weather) {
+        transition: opacity 0.3s var(--ease-out);
+    }
+
+    &.idle > :is(.tv-clock, .tv-radio, .tv-weather) {
+        opacity: 0;
+        transition-duration: 1.5s;
+    }
+}
+
+.tv-clock {
     display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    padding: $global-px * 2.5;
-    color: #cccccc;
-    text-shadow: 0 2px 4px rgb(0 0 0 / 50%);
-    transition: 0.2s transform ease-in-out;
+    flex-direction: column;
+    gap: 1.25rem;
+    grid-area: clock;
+}
 
-    &.overlay {
-        transform: translateX(-20vw);
-    }
+.tv-radio {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    grid-area: radio;
+}
 
-    &-aside {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        align-items: flex-end;
-    }
+.tv-weather {
+    grid-area: weather;
 }

@@ -1,0 +1,7 @@
+/* Station names are HTML, see RadioChannel.visibleName: KINK writes its K mirrored */
+.station-name i {
+    display: inline-block;
+    font-style: normal;
+    text-transform: uppercase;
+    transform: rotateY(180deg);
+}

@@ -1,0 +1,60 @@
+.days {
+    display: grid;
+    grid-template-columns: auto auto auto auto 1fr auto;
+    column-gap: 1rem;
+    row-gap: 0.375rem;
+    align-items: center;
+    font-size: var(--text-body);
+    font-variant-numeric: tabular-nums;
+}
+
+// Every row shares the parent's columns, so all days line up
+.day {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+}
+
+.day-name {
+    min-inline-size: 6.5rem;
+    font-weight: 500;
+}
+
+.day-icon {
+    font-size: 1.1em;
+}
+
+.day-rain {
+    font-size: var(--text-meta);
+    color: var(--rain);
+    text-align: end;
+    visibility: hidden;
+
+    &.likely {
+        visibility: visible;
+    }
+}
+
+.day-min {
+    color: var(--fg-subtle);
+    text-align: end;
+}
+
+// The track spans the week's coldest to warmest temperature. The coloured gradient covers
+// the whole track and is clipped to the day's range, so colours mean the same on every row.
+.day-range {
+    position: relative;
+    block-size: 0.5rem;
+    border-radius: 1rem;
+    background-color: oklch(1 0 0 / 0.12);
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: linear-gradient(to right, var(--cold), var(--mild), var(--warm));
+        clip-path: inset(0 calc(100% - var(--range-end)) 0 var(--range-start) round 1rem);
+    }
+}

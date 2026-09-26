@@ -1,0 +1,9 @@
+// The SVG is used as a mask, so the icon takes the text colour and scales with the font size
+:host {
+    display: inline-block;
+    flex: none;
+    inline-size: 1em;
+    block-size: 1em;
+    background-color: currentColor;
+    mask: var(--icon) center / contain no-repeat;
+}

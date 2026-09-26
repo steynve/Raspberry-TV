@@ -1,0 +1,6 @@
+@if (alerts().length) {
+    <p class="widget alert" role="status">
+        <app-icon name="triangle-alert" />
+        Pi · {{ alerts().join(' · ') }}
+    </p>
+}

@@ -1,0 +1,38 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 1.5rem;
+    font-size: var(--text-meta);
+}
+
+// Each row shares the list's columns, so labels and values line up
+.row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+
+    dt {
+        color: var(--fg-subtle);
+    }
+
+    dd {
+        font-family: var(--font-mono);
+        text-align: end;
+        color: var(--fg-muted);
+    }
+
+    &.warning dd {
+        color: var(--warm);
+    }
+}
+
+.empty {
+    font-size: var(--text-meta);
+    color: var(--fg-subtle);
+}

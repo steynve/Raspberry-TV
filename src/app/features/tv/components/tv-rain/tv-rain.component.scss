@@ -1,0 +1,55 @@
+.summary {
+    font-size: var(--text-lead);
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.chart {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+svg {
+    display: block;
+    inline-size: 100%;
+    block-size: 7rem;
+    overflow: visible;
+    // A hairline at every hour, like the grid on an elevation profile
+    background: linear-gradient(
+        to right,
+        transparent calc(50% - 0.5px),
+        var(--glass-edge) 0 calc(50% + 0.5px),
+        transparent 0
+    );
+    border-block-end: 1px solid var(--glass-edge);
+}
+
+.fill-top {
+    stop-color: var(--rain);
+    stop-opacity: 0.55;
+}
+
+.fill-bottom {
+    stop-color: var(--rain);
+    stop-opacity: 0.05;
+}
+
+.line {
+    fill: none;
+    stroke: var(--rain);
+    stroke-width: 0.22rem;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-meta);
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-subtle);
+}

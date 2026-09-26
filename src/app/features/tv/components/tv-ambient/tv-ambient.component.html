@@ -1,0 +1,19 @@
+<time class="time">{{ time() }}</time>
+
+<div class="music">
+    <app-icon name="audio-lines" class="playing-icon" [class.active]="playing()" />
+    <div>
+        @if (song()) {
+            <p class="song">{{ song() }}</p>
+            <p class="meta">
+                {{ artist() }} · <span class="station-name" [innerHTML]="station()"></span>
+            </p>
+        } @else {
+            <p class="song station-name" [innerHTML]="station()"></p>
+        }
+    </div>
+</div>
+
+@if (weather(); as weather) {
+    <p class="meta weather"><app-icon [name]="weather.icon" /> {{ weather.text }}</p>
+}

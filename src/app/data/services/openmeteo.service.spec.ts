@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { OpenMeteoService } from './openmeteo.service';
+import { forecastMock } from './mocks/openmeteo.mock';
 import { provideHttpClient } from '@angular/common/http';
 import { environment } from '@environments/environment';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -29,14 +30,11 @@ describe('OpenMeteoService', () => {
 
         expect(request.request.params.get('latitude')).toBe(environment.open_meteo_lat);
         expect(request.request.params.get('longitude')).toBe(environment.open_meteo_lon);
-        expect(request.request.params.get('daily')).toBe('sunrise,sunset');
+        expect(request.request.params.get('daily')).toContain('temperature_2m_max');
+        expect(request.request.params.get('minutely_15')).toBe('precipitation');
+        expect(request.request.params.get('hourly')).toContain('et0_fao_evapotranspiration');
+        expect(request.request.params.get('past_hours')).toBe('48');
 
-        request.flush({
-            current_weather: {},
-            daily: {
-                sunrise: ['2026-03-01T07:00', '2026-03-02T06:58'],
-                sunset: ['2026-03-01T18:30'],
-            },
-        });
+        request.flush(JSON.parse(JSON.stringify(forecastMock)));
     });
 });

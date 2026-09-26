@@ -1,0 +1,2 @@
+# Writes the Pi's health for the TV app every minute. Installed in /etc/cron.d/ by setup.sh.
+* * * * * root /usr/local/bin/raspberry-health

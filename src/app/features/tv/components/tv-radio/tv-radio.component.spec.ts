@@ -1,14 +1,17 @@
 import { Subject } from 'rxjs';
 import { Component } from '@angular/core';
+import { Kink } from '@data/models/kink.model';
 import { TvRadioComponent } from './tv-radio.component';
+import { TvSystemComponent } from '../tv-system/tv-system.component';
 import { RadioService } from '@data/services/radio.service';
+import { PowerStore } from '@data/stores/power.store';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
 import { RadioServiceMock } from '@data/services/mocks/radio.service.mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-@Component({ selector: 'app-tv-npmfeed', template: '' })
-class TvNpmfeedStubComponent {}
+@Component({ selector: 'app-tv-system', template: '' })
+class TvSystemStubComponent {}
 
 describe('TvRadioComponent', () => {
     let component: TvRadioComponent;
@@ -23,7 +26,8 @@ describe('TvRadioComponent', () => {
             providers: [{ provide: RadioService, useClass: RadioServiceMock }],
         });
         TestBed.overrideComponent(TvRadioComponent, {
-            set: { imports: [TvNpmfeedStubComponent] },
+            remove: { imports: [TvSystemComponent] },
+            add: { imports: [TvSystemStubComponent] },
         });
 
         radioService = TestBed.inject(RadioService) as unknown as RadioServiceMock;
@@ -36,16 +40,104 @@ describe('TvRadioComponent', () => {
         fixture.componentRef.setInput('overlay', true);
         fixture.detectChanges();
         await fixture.whenStable();
+        vi.advanceTimersByTime(0);
     });
 
     afterEach(() => vi.useRealTimers());
 
     const audio = (): HTMLAudioElement => fixture.nativeElement.querySelector('audio');
 
+    // Every API response is a new object, like the real thing
+    const playOnKink = (title: string, artist: string): void => {
+        radioService.kinkResponse = new Kink({}, '', { kink: { title, artist } }, false);
+    };
+
     it('should start the first channel after the first render', () => {
         expect(audio().src).toBe(radioService.radioChannels[0].file);
         expect(audio().volume).toBe(0.5);
         expect(audio().play).toHaveBeenCalled();
+    });
+
+    describe('when the TV turns off or switches away', () => {
+        it('should drop the stream and stop asking what is playing', () => {
+            const power = TestBed.inject(PowerStore);
+            const calls = vi.mocked(radioService.getNowPlaying).mock.calls.length;
+
+            power.sleep();
+            TestBed.tick();
+
+            expect(audio().hasAttribute('src')).toBe(false);
+            expect(audio().load).toHaveBeenCalled();
+
+            vi.advanceTimersByTime(1000 * 60 * 5);
+            expect(radioService.getNowPlaying).toHaveBeenCalledTimes(calls);
+        });
+
+        it('should pick the stream up again, and ask what is playing right away', () => {
+            const power = TestBed.inject(PowerStore);
+            power.sleep();
+            TestBed.tick();
+            const calls = vi.mocked(radioService.getNowPlaying).mock.calls.length;
+
+            power.wake();
+            TestBed.tick();
+            vi.advanceTimersByTime(0);
+
+            expect(audio().src).toBe(radioService.radioChannels[0].file);
+            expect(radioService.getNowPlaying).toHaveBeenCalledTimes(calls + 1);
+        });
+    });
+
+    describe('when the browser blocks autoplay', () => {
+        const block = (): void => {
+            vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(
+                new DOMException('play() failed', 'NotAllowedError'),
+            );
+        };
+
+        it('should ask for a key press and start on the first one', async () => {
+            block();
+            component.startRadio();
+            await vi.waitFor(() => expect(component.blocked()).toBe(true));
+            fixture.detectChanges();
+            expect(fixture.nativeElement.querySelector('.blocked')).toBeTruthy();
+
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+            await vi.waitFor(() => expect(component.blocked()).toBe(false));
+            fixture.detectChanges();
+
+            expect(fixture.nativeElement.querySelector('.blocked')).toBeNull();
+        });
+
+        it('should also start on a click', async () => {
+            block();
+            component.startRadio();
+            await vi.waitFor(() => expect(component.blocked()).toBe(true));
+            const plays = vi.mocked(HTMLMediaElement.prototype.play).mock.calls.length;
+
+            document.dispatchEvent(new Event('pointerdown'));
+
+            expect(vi.mocked(HTMLMediaElement.prototype.play).mock.calls.length).toBe(plays + 1);
+        });
+
+        it('should ignore other playback errors', async () => {
+            vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(
+                new DOMException('interrupted', 'AbortError'),
+            );
+            component.startRadio();
+            await Promise.resolve();
+            await Promise.resolve();
+
+            expect(component.blocked()).toBe(false);
+        });
+
+        it('should leave key presses alone when audio plays', () => {
+            const plays = vi.mocked(HTMLMediaElement.prototype.play).mock.calls.length;
+
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+
+            expect(vi.mocked(HTMLMediaElement.prototype.play).mock.calls.length).toBe(plays);
+        });
     });
 
     it('should fetch what is playing on init and every 30 seconds', () => {
@@ -54,6 +146,81 @@ describe('TvRadioComponent', () => {
         vi.advanceTimersByTime(1000 * 30);
 
         expect(radioService.getNowPlaying).toHaveBeenCalledTimes(2);
+    });
+
+    it('should reflect the audio playback state', () => {
+        audio().dispatchEvent(new Event('playing'));
+        fixture.detectChanges();
+        expect(component.playing()).toBe(true);
+        expect(fixture.nativeElement.querySelector('.playing-icon').classList).toContain('active');
+
+        audio().dispatchEvent(new Event('waiting'));
+        expect(component.playing()).toBe(false);
+    });
+
+    it('should mark the playing channel in the list', () => {
+        const items = fixture.nativeElement.querySelectorAll('.channel');
+
+        expect(items[0].getAttribute('aria-current')).toBe('true');
+        expect(items[1].getAttribute('aria-current')).toBeNull();
+    });
+
+    it('should open the channel list with the overlay', () => {
+        const channels = fixture.nativeElement.querySelector('.channels');
+
+        expect(channels.classList).toContain('open');
+
+        fixture.componentRef.setInput('overlay', false);
+        fixture.detectChanges();
+
+        expect(channels.classList).not.toContain('open');
+    });
+
+    describe('history', () => {
+        it('should say there is nothing yet', () => {
+            expect(fixture.nativeElement.querySelector('.history-empty')).toBeTruthy();
+        });
+
+        it('should move the previous song to the history when a new one starts', () => {
+            // The first response (KINK) is the current song, so the history is still empty
+            expect(component.history()).toEqual([]);
+
+            playOnKink('next_song', 'next_artist');
+            vi.advanceTimersByTime(1000 * 30);
+            fixture.detectChanges();
+
+            expect(component.history()).toEqual([
+                expect.objectContaining({
+                    song: 'kink_song',
+                    artist: 'kink_artist',
+                    station: 'KINK',
+                }),
+            ]);
+            expect(fixture.nativeElement.querySelector('.played-song').textContent).toBe(
+                'kink_song',
+            );
+        });
+
+        it('should not repeat a song that is still playing', () => {
+            vi.advanceTimersByTime(1000 * 30 * 3);
+
+            expect(component.history()).toEqual([]);
+        });
+
+        it('should keep the last 5 songs', () => {
+            for (let i = 0; i < 8; i++) {
+                playOnKink(`song ${i}`, 'artist');
+                vi.advanceTimersByTime(1000 * 30);
+            }
+
+            expect(component.history().map((played) => played.song)).toEqual([
+                'song 6',
+                'song 5',
+                'song 4',
+                'song 3',
+                'song 2',
+            ]);
+        });
     });
 
     describe('nowPlayingSong / nowPlayingArtist', () => {
@@ -151,7 +318,7 @@ describe('TvRadioComponent', () => {
             keyDownSubject.next('ArrowDown');
             fixture.detectChanges();
 
-            const items = fixture.nativeElement.querySelectorAll('.channels li');
+            const items = fixture.nativeElement.querySelectorAll('.channel');
 
             expect(items[1].classList).toContain('selected');
             expect(items[0].classList).not.toContain('selected');

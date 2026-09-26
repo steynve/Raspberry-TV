@@ -10,8 +10,14 @@ export class OpenMeteoForecastDaily extends AbstractModel {
     public sunriseTomorrowTimestamp: number;
 
     constructor(
+        public time: string[],
         public sunrise: string[],
         public sunset: string[],
+        public weather_code: number[],
+        public temperature_2m_max: number[],
+        public temperature_2m_min: number[],
+        public precipitation_probability_max: number[],
+        public uv_index_max: number[],
     ) {
         super();
 

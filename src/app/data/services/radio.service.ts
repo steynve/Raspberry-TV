@@ -33,6 +33,18 @@ export class RadioService extends HttpService<Kink | Flux | DNB> {
             'kink-distortion',
         ),
         new RadioChannel(
+            'http://playerservices.streamtheworld.com/api/livestream-redirect/KINK_90S.mp3',
+            "<i>K</i>INK 90's",
+            'KINK',
+            'kink-nineties',
+        ),
+        new RadioChannel(
+            'https://fluxmusic.api.radiosphere.io/channels/70s/stream.mp3',
+            '70s',
+            'FLUX',
+            '1f213c96-045b-4cd0-98c5-8717a16ddbae',
+        ),
+        new RadioChannel(
             'https://fluxmusic.api.radiosphere.io/channels/alternative/stream.mp3',
             'Alt',
             'FLUX',

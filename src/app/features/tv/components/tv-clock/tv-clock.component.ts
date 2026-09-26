@@ -1,42 +1,26 @@
-import { interval } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ClockStore } from '@data/stores/clock.store';
+import { Component, computed, inject } from '@angular/core';
 
 @Component({
     selector: 'app-tv-clock',
     templateUrl: './tv-clock.component.html',
     styleUrl: './tv-clock.component.scss',
 })
-export class TvClockComponent implements OnInit {
-    private readonly destroyRef = inject(DestroyRef);
+export class TvClockComponent {
+    private readonly clock = inject(ClockStore);
 
-    public readonly date = signal('');
-    public readonly time = signal('');
+    public readonly date = computed(() =>
+        this.clock.now().toLocaleString('en-GB', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+        }),
+    );
 
-    public getDateTime(): void {
-        const today = new Date();
-
-        this.date.set(
-            today.toLocaleString('nl-NL', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-            }),
-        );
-
-        this.time.set(
-            today.toLocaleString('nl-NL', {
-                hour: '2-digit',
-                minute: '2-digit',
-            }),
-        );
-    }
-
-    public ngOnInit(): void {
-        this.getDateTime();
-
-        interval(1000) // 1 second
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(() => this.getDateTime());
-    }
+    public readonly time = computed(() =>
+        this.clock.now().toLocaleString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+        }),
+    );
 }

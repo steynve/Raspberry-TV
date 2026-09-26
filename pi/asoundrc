@@ -1,0 +1,22 @@
+# Sends all sound to the HDMI output (card 1). Installed as ~/.asoundrc by setup.sh.
+pcm.!default {
+  type asym
+  playback.pcm {
+    type plug
+    slave.pcm "output"
+  }
+  capture.pcm {
+    type plug
+    slave.pcm "input"
+  }
+}
+
+pcm.output {
+  type hw
+  card 1
+}
+
+ctl.!default {
+  type hw
+  card 1
+}

@@ -1,111 +1,141 @@
-import { of } from 'rxjs';
+import { RainSlot } from '@data/utils/rain';
+import { SunState } from '@data/utils/sun';
+import { ClockStore } from '@data/stores/clock.store';
+import { Component, input, signal } from '@angular/core';
+import { WeatherStore } from '@data/stores/weather.store';
 import { TvWeatherComponent } from './tv-weather.component';
-import { OpenMeteoService } from '@data/services/openmeteo.service';
+import { TvRainComponent } from '../tv-rain/tv-rain.component';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { TvForecastComponent } from '../tv-forecast/tv-forecast.component';
 import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
 import { OpenMeteoAirQuality } from '@data/models/openmeteo-airquality.model';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { OpenMeteoForecastDaily } from '@data/models/openmeteo-forecast-daily.model';
-import { OpenMeteoForecastCurrent } from '@data/models/openmeteo-forecast-current.model';
-import { OpenMeteoAirqualityService } from '@data/services/openmeteo-airquality.service';
-import { OpenMeteoAirQualityCurrent } from '@data/models/openmeteo-airquality-current.model';
+import { airQualityMock, forecastMock } from '@data/services/mocks/openmeteo.mock';
+
+@Component({ selector: 'app-tv-rain', template: '' })
+class TvRainStubComponent {
+    public readonly slots = input<RainSlot[]>();
+}
+
+@Component({ selector: 'app-tv-forecast', template: '' })
+class TvForecastStubComponent {
+    public readonly daily = input();
+}
 
 describe('TvWeatherComponent', () => {
     let component: TvWeatherComponent;
     let fixture: ComponentFixture<TvWeatherComponent>;
+    let rain: ReturnType<typeof signal<RainSlot[]>>;
+    let airQuality: ReturnType<typeof signal<OpenMeteoAirQuality | undefined>>;
+    let sun: ReturnType<typeof signal<Partial<SunState>>>;
 
-    const forecast = new OpenMeteoForecast(
-        new OpenMeteoForecastCurrent('2026-03-01T12:00', 900, 12.4, 5, 180, 1, 2),
-        new OpenMeteoForecastDaily(
-            ['2026-03-01T07:00', '2026-03-02T06:58'],
-            ['2026-03-01T18:30', '2026-03-02T18:32'],
-        ),
-    );
-
-    // birch 25 → 4/10, mugwort 100 → above the highest threshold → 10/10
-    const airQuality = new OpenMeteoAirQuality(
-        new OpenMeteoAirQualityCurrent('2026-03-01T12:00', 3600, 0, 25, 0, 100, 0, 0),
-    );
-
-    const getForecast = vi.fn(() => of(forecast));
-    const getAirQuality = vi.fn(() => of(airQuality));
-
-    const createComponent = (now: Date): void => {
-        vi.setSystemTime(now);
-        fixture = TestBed.createComponent(TvWeatherComponent);
-        component = fixture.componentInstance;
-        fixture.detectChanges();
-    };
+    const element = (): HTMLElement => fixture.nativeElement;
 
     beforeEach(() => {
-        vi.useFakeTimers();
-        getForecast.mockClear();
-        getAirQuality.mockClear();
+        rain = signal<RainSlot[]>([{ time: new Date(2026, 2, 1, 12), precipitation: 0 }]);
+        airQuality = signal<OpenMeteoAirQuality | undefined>(airQualityMock);
+        sun = signal<Partial<SunState>>({ phase: 'day' });
 
         TestBed.configureTestingModule({
             providers: [
-                { provide: OpenMeteoService, useValue: { getForecast } },
-                { provide: OpenMeteoAirqualityService, useValue: { getAirQuality } },
+                { provide: ClockStore, useValue: { now: signal(new Date(2026, 2, 1, 11, 30)) } },
+                {
+                    provide: WeatherStore,
+                    useValue: {
+                        forecast: signal<OpenMeteoForecast | undefined>(forecastMock),
+                        airQuality,
+                        rain,
+                        sun,
+                    },
+                },
             ],
+        });
+        TestBed.overrideComponent(TvWeatherComponent, {
+            remove: { imports: [TvRainComponent, TvForecastComponent] },
+            add: { imports: [TvRainStubComponent, TvForecastStubComponent] },
+        });
+
+        fixture = TestBed.createComponent(TvWeatherComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
+
+    it('should describe the current weather', () => {
+        expect(component.condition()).toEqual({ description: 'Partly cloudy', icon: 'cloud-sun' });
+        expect(element().querySelector('.now-temperature')?.textContent).toBe('12°');
+    });
+
+    it('should show the wind with the gusts of the current hour', () => {
+        expect(component.wind()).toBe('SW 14 km/h · gusts 33');
+    });
+
+    it('should show the trail condition', () => {
+        // 6 mm of rain an hour and a half ago
+        expect(component.trail()).toBe('Trails muddy');
+    });
+
+    describe('UV', () => {
+        it("should warn on a sunny day with today's maximum", () => {
+            // The mock's maximum today is 6.4
+            expect(element().querySelector('.now-uv')?.textContent?.trim()).toBe(
+                'UV 6 · wear sunscreen',
+            );
+        });
+
+        it('should stay quiet at night', () => {
+            sun.set({ phase: 'night' });
+            fixture.detectChanges();
+
+            expect(element().querySelector('.now-uv')).toBeNull();
         });
     });
 
-    afterEach(() => vi.useRealTimers());
+    describe('rain', () => {
+        it('should say it stays dry and leave the middle of the screen empty', () => {
+            expect(element().querySelector('.now-dry')?.textContent).toContain(
+                'Dry for the next 2 hours',
+            );
+            expect(element().querySelector('app-tv-rain')).toBeNull();
+        });
 
-    it('should fetch the weather on init and every 5 minutes', () => {
-        createComponent(new Date(2026, 2, 1, 12));
-        expect(getForecast).toHaveBeenCalledTimes(1);
-        expect(getAirQuality).toHaveBeenCalledTimes(1);
+        it('should show the rain widget when rain is coming', () => {
+            rain.set([
+                { time: new Date(2026, 2, 1, 12), precipitation: 0 },
+                { time: new Date(2026, 2, 1, 12, 15), precipitation: 0.4 },
+            ]);
+            fixture.detectChanges();
 
-        vi.advanceTimersByTime(1000 * 60 * 5);
-
-        expect(getForecast).toHaveBeenCalledTimes(2);
-        expect(getAirQuality).toHaveBeenCalledTimes(2);
+            expect(element().querySelector('app-tv-rain.widget.rain')).toBeTruthy();
+            expect(element().querySelector('.now-dry')).toBeNull();
+        });
     });
 
-    it('should return the weather icon for the current weather code', () => {
-        createComponent(new Date(2026, 2, 1, 12));
-
-        expect(component.weatherIcon()).toBe('http://openweathermap.org/img/wn/02d@2x.png');
+    it('should always render the week', () => {
+        expect(element().querySelector('app-tv-forecast.widget.week')).toBeTruthy();
     });
 
-    describe('pollenGroupScore()', () => {
-        it('should return the highest score within a group', () => {
-            createComponent(new Date(2026, 2, 1, 12));
-
+    describe('pollen', () => {
+        it('should score each group by its highest pollen type', () => {
             expect(component.pollenGroupScore('tree')).toBe(4);
             expect(component.pollenGroupScore('grass')).toBe(0);
             expect(component.pollenGroupScore('weed')).toBe(10);
         });
 
-        it('should only render groups with a score', () => {
-            createComponent(new Date(2026, 2, 1, 12));
+        it('should render every group and mark the ones without pollen', () => {
+            const items = element().querySelectorAll<HTMLElement>('.pollen-item');
+
+            expect(items.length).toBe(3);
+            expect(items[0].textContent).toContain('Trees');
+            expect(items[0].style.getPropertyValue('--level')).toBe('0.4');
+            expect(items[1].classList).toContain('none');
+        });
+
+        it('should hide the pollen without air quality data', () => {
+            airQuality.set(undefined);
             fixture.detectChanges();
 
-            const alts = Array.from(
-                fixture.nativeElement.querySelectorAll('img') as NodeListOf<HTMLImageElement>,
-            ).map((img) => img.alt);
-
-            expect(alts).toContain('tree pollen icon');
-            expect(alts).toContain('weed pollen icon');
-            expect(alts).not.toContain('grass pollen icon');
-        });
-    });
-
-    describe('setSun()', () => {
-        it("should show today's sunrise before sunrise", () => {
-            createComponent(new Date(2026, 2, 1, 6));
-            expect(component.sun()).toEqual({ type: 'sunrise', time: '07:00' });
-        });
-
-        it("should show today's sunset between sunrise and sunset", () => {
-            createComponent(new Date(2026, 2, 1, 12));
-            expect(component.sun()).toEqual({ type: 'sunset', time: '18:30' });
-        });
-
-        it("should show tomorrow's sunrise after sunset", () => {
-            createComponent(new Date(2026, 2, 1, 20));
-            expect(component.sun()).toEqual({ type: 'sunrise', time: '06:58' });
+            expect(component.pollenGroupScore('tree')).toBe(0);
+            expect(element().querySelector('.pollen')).toBeNull();
         });
     });
 });

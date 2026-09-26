@@ -1,0 +1,20 @@
+<h2 class="widget-title">This week</h2>
+
+<ol class="days">
+    @for (day of days(); track day.date) {
+        <li
+            class="day"
+            [style.--range-start]="day.rangeStart + '%'"
+            [style.--range-end]="day.rangeEnd + '%'"
+        >
+            <span class="day-name">{{ day.label }}</span>
+            <app-icon class="day-icon" [name]="day.condition.icon" />
+            <span class="day-rain" [class.likely]="day.precipitationProbability >= 30">
+                {{ day.precipitationProbability }}%
+            </span>
+            <span class="day-min">{{ day.min }}°</span>
+            <span class="day-range"></span>
+            <span class="day-max">{{ day.max }}°</span>
+        </li>
+    }
+</ol>

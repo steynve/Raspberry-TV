@@ -1,6 +1,51 @@
 # Raspberry
 
-An open-source application for personal use: a TV dashboard for a Raspberry Pi kiosk, showing a seasonal wallpaper, internet radio, weather, pollen and a clock.
+An open-source application for personal use: a TV dashboard for a Raspberry Pi kiosk, with a nature photo that follows the season and the weather, internet radio, a clock, the sky, the weather and the Pi's own health.
+
+## What it does
+
+A Raspberry Pi boots into Chromium in kiosk mode and loads this app from its own lighttpd server. The Pi is connected to the living room TV over HDMI, and the TV remote controls the app through HDMI-CEC (`pi/hdmicec.sh` translates remote buttons into key presses, and tells the app when the TV turns on or switches to the Pi).
+
+The screen is a full-screen photo with the clock top-left, what's playing top-right and the weather along the bottom. The middle stays free for the photo, unless rain is coming:
+
+| Part         | What it shows                                                                                                                                                                     | Source                                                                                           | Refreshes                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------- |
+| Wallpaper    | A nature photo matching the season and the weather (mist, rain, snow, storm, sun, a starry sky on clear nights), a different one each day. Its average colour tints the UI accent | [Pexels](https://www.pexels.com/api/) (API key)                                                  | Photos weekly, day 6-hourly |
+| Clock        | Date and time, in English with a 24-hour clock                                                                                                                                    | Local                                                                                            | Every minute                |
+| Sky          | By day the daylight left and the golden hour, at night the moon phase, how clear the night is and the next sunrise. Northern lights when tonight's Kp is 6 or higher              | Open-Meteo, [NOAA](https://www.swpc.noaa.gov/) Kp forecast, the moon phase is calculated locally | Every minute                |
+| Radio        | Plays an internet radio station over the TV speakers, with the current song and artist, and the last 5 songs in the channel list                                                  | KINK, FLUX FM and DNB Radio "now playing" APIs                                                   | Every 30 seconds            |
+| Now          | Temperature, conditions, wind and gusts, trail conditions, whether it stays dry, UV from 5, and tree/grass/weed pollen on a 0–10 scale                                            | [Open-Meteo](https://open-meteo.com/) forecast and air quality                                   | Every 5 minutes             |
+| Next 2 hours | Only when rain is coming: when it starts or stops, with a precipitation profile in 15 minute steps                                                                                | Open-Meteo                                                                                       | Every 5 minutes             |
+| This week    | Five days with conditions, chance of rain and temperature range                                                                                                                   | Open-Meteo                                                                                       | Every 5 minutes             |
+| Raspberry Pi | Temperature, load, memory, storage, power and uptime in the channel list, and a warning top-right when something is wrong                                                         | `health.json`, written by `pi/pi-health.sh`                                                      | Every minute                |
+
+The trail conditions are an estimate: a water balance over the last 48 hours, where rain adds water and evaporation (ET₀) removes it. 1 mm or more left means "wet", 4 mm or more "muddy". Tune the thresholds in `src/app/data/utils/outdoors.ts` to your local trails.
+
+After sunset the photo dims and the text softens, so the TV doesn't light up the room at night.
+
+### Idle
+
+After 10 minutes without a remote button press, or straight away with the Back button, the dashboard fades out and the photo fades almost to black. What stays is a dim corner with the time, the song that's playing and the weather: calm enough to leave on all day. Any button, the TV turning on, or the TV switching its input back to the Pi brings the dashboard back. The first button press only wakes it, so it never opens the channel list or goes back to idle by accident.
+
+The TV events come from HDMI-CEC: `pi/hdmicec.sh` sends the app an F13 key press (no remote button sends it) when libcec reports that the Pi became the active source, or that the TV's power status changed to on. The timeout is `IDLE_AFTER` in `src/app/features/tv/tv.component.ts`.
+
+### Sleep
+
+When the TV turns off or switches to another input, nobody can see the Pi or hear it (its sound goes through the TV). `pi/hdmicec.sh` then sends F14, and the app goes to sleep: it shows the idle screen, drops the radio stream and pauses all polling (weather, song info, northern lights, Pi health). Chromium keeps running, so when the TV comes back the dashboard is there within a fraction of a second, the stream restarts and everything refreshes right away. Measured on the Pi, the CPU goes from 8.5% to 2.6% busy and the sound card closes. Together with the Wi-Fi and Bluetooth chips switched off (see below), that saves a few tenths of a watt: modest, because an idle Pi 3 itself still draws around 2 W.
+
+The Pi's HDMI output stays on: on the Pi, CEC runs through the HDMI hardware, so switching it off could stop the Pi from ever hearing the TV turn on again.
+
+All APIs are called directly from the browser, so any new data source must allow cross-origin requests (CORS). There is no proxy. Fonts ([Geist](https://vercel.com/font)) and icons ([Lucide](https://lucide.dev/)) are bundled from npm, so nothing else is loaded from third parties.
+
+### Remote control
+
+| Button         | Channel list closed   | Channel list open                        |
+| -------------- | --------------------- | ---------------------------------------- |
+| Select (Enter) | Open the channel list | Play the highlighted channel, close list |
+| Exit (Back)    | Go to the idle screen | Close the list, reset the highlight      |
+| Up / Down      | –                     | Move the highlight                       |
+
+On the idle screen any button brings the dashboard back, and the music keeps playing throughout.
 
 ## Open for modification
 
@@ -13,7 +58,7 @@ This project can be downloaded and modified by anyone interested.
 ### Setup
 
 - Clone this repo, go to its root directory and run `npm install` to install its dependencies.
-- Create an `environment.ts` file in the project's `root/src/environment` directory. An example can be found in `environment_example.ts`.
+- Create `src/environments/environment.ts` and `src/environments/environment.prod.ts` with your Pexels API key and location. `environment_example.ts` shows what goes in them.
 
 ### Development
 
@@ -21,37 +66,84 @@ Run `npm run start` for a dev server. Navigate to `http://localhost:1337/`.
 
 ### Deploy
 
-Run `npm run deploy` for a full build of the project.
-This executes a custom bash script providing multiple options, but is mainly focussed on automating the SSH actions I had to manually do after every build
+Run `npm run deploy`. It asks before each step, `npm run deploy -- --yes` does them all:
+
+1. Build the app.
+2. Mirror `dist/raspberry` into the Pi's web root with `rsync --delete`, so no old files linger. The Pi's own `health.json` stays.
+3. Copy `pi/` to the Pi and run `pi/setup.sh`, which applies the kiosk setup (see below).
+4. Reload the page on the TV, or restart the kiosk when its session files changed.
 
 ## Unit testing
 
 Run `npm run test` to execute the unit tests via [Vitest](https://vitest.dev/) in watch mode, or `npm run test:no-watch` for a single run.
 
-Visit `root/coverage/raspberry/index.html` for a detailed coverage report.<br>
+Open `coverage/raspberry/index.html` for a detailed coverage report.<br>
 Note that the coverage folder is only created after running a test for the first time, and is hidden by default.
 
 ## Linting
 
 Run `npm run lint` to lint the project via [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/).
 
-## TV notes
+## The Pi
 
-### Requirements
+Everything the Pi needs lives in `pi/`, and `pi/setup.sh` applies it. The script is safe to run again: it only changes what differs, and `npm run deploy` runs it every time.
 
-- Rasperry Pi OS Lite (64 bit)
-- lighttpd
+| File            | Installed as                                   | What it does                                                                                                                                                                              |
+| --------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bash_profile`  | `~/.bash_profile`                              | On the automatic tty1 login: starts the remote control bridge once, then X without a mouse cursor                                                                                         |
+| `xinitrc`       | `~/.xinitrc`                                   | Keeps the TV awake, gives the F13 and F14 signals a keycode Chromium understands, and runs Chromium in kiosk mode, restarting it if it ever quits or crashes                              |
+| `hdmicec.sh`    | `/usr/local/bin/raspberry-cec`                 | Turns TV remote buttons (HDMI-CEC) into key presses with `xdotool`, wakes the app when the TV turns on or switches to the Pi, and puts it to sleep when the TV turns off or switches away |
+| `asoundrc`      | `~/.asoundrc`                                  | Sends all sound to HDMI                                                                                                                                                                   |
+| `pi-health.sh`  | `/usr/local/bin/raspberry-health`              | Writes `health.json`, run every minute by `cron` (`/etc/cron.d/raspberry-health`)                                                                                                         |
+| `lighttpd.conf` | `/etc/lighttpd/conf-enabled/50-raspberry.conf` | Cache headers: built files forever, the page and `health.json` never                                                                                                                      |
+| `journald.conf` | `/etc/systemd/journald.conf.d/raspberry.conf`  | Caps the system log at 50 MB (it had grown to 1.7 GB)                                                                                                                                     |
 
-### Kiosk
+It also installs the packages the kiosk needs, sets up the automatic login on tty1, and turns off services a wired kiosk doesn't use: Bluetooth, ModemManager, triggerhappy, udisks2, the rsync daemon (rsync over SSH still works), and the display backlight and EEPROM services of other Pi models. It switches the Wi-Fi and Bluetooth chips off with `dtoverlay=disable-wifi` and `dtoverlay=disable-bt` in the boot config, which takes a reboot.
 
-- https://blog.r0b.io/post/minimal-rpi-kiosk/
+### Hardware and software
 
-### HDMI-CEC
+- Raspberry Pi 3 Model B, wired network (Wi-Fi and Bluetooth are switched off), HDMI to the TV
+- Raspberry Pi OS Lite 11 (bullseye), 64-bit, with Chromium 126 (the app needs 117 or newer)
+- `/boot/config.txt`: `dtoverlay=vc4-kms-v3d`, `disable_overscan=1`, `hdmi_drive=2` (sound over HDMI) and `hdmi_ignore_cec_init=1` (don't switch the TV's input on boot)
 
-- https://ubuntu-mate.community/t/controlling-raspberry-pi-with-tv-remote-using-hdmi-cec/4250
+### Why these tools
 
-### Sound over HDMI
+- **Web server: lighttpd.** It serves a handful of static files to one browser on the same machine, using about 1 MB of memory. nginx would do the same job without being faster, and Caddy or a Node server would only add memory. Serving the app from disk (`file://`) doesn't work, because browsers block JavaScript modules there.
+- **Browser: Chromium.** It's the browser Raspberry Pi tunes for its GPU, and the only one on this OS that supports all the CSS the app uses (relative colours, subgrid, `@property`). WPE WebKit (`cog`) is lighter, but the version for bullseye is too old for that CSS. Firefox is heavier on a Pi 3.
+- **Display: X11 with `startx`, no window manager.** It's the least that can show a full-screen browser, and `xdotool` (for the remote control) needs it.
 
-- Uncomment `hdmi_drive=2` in `/boot/config.txt`
-- sudo apt-get install `alsa-utils pulseaudio`
-- sudo `raspi-config` -> System Options -> Audio -> HDMI/Hifi
+### Operating system: time for a fresh install
+
+Debian 11 left long-term support in August 2026. Its security archive is being taken down, so `/etc/apt/sources.list` has the security line commented out, as it only gave errors (a backup is in `sources.list.bak-2026-09-26`). The Pi still gets the updates Raspberry Pi publishes for bullseye, but no more Debian security fixes. Upgrading in place to a newer release isn't supported by Raspberry Pi, so when convenient:
+
+1. Flash the current Raspberry Pi OS Lite (64-bit) with Raspberry Pi Imager: set the hostname to `raspberrypi`, the user to `pipi`, and add your SSH key.
+2. Add the `/boot/config.txt` lines above (on newer releases the file is `/boot/firmware/config.txt`).
+3. Run `npm run deploy -- --yes` and reboot. `setup.sh` installs everything else.
+
+### Links
+
+- Kiosk: https://blog.r0b.io/post/minimal-rpi-kiosk/
+- HDMI-CEC: https://ubuntu-mate.community/t/controlling-raspberry-pi-with-tv-remote-using-hdmi-cec/4250
+
+### Display
+
+The Pi 3 outputs at most 1080p (SDR, 8-bit), so the TV's 4K, HDR and wide colour gamut are out of reach; the TV upscales. It already runs at 1920×1080 at 60 Hz. The UI is sized in `rem` from the viewport, so it fills any resolution.
+
+- On the TV, set the HDMI input to Game or PC mode (sharp text, no overscan, no motion smoothing) and pick a Movie/Filmmaker style picture mode, so the photos aren't oversaturated.
+- If the Pi ever picks a wrong resolution, force 1080p60 by adding `video=HDMI-A-1:1920x1080@60` to `/boot/cmdline.txt`.
+- Performance: there are no `backdrop-filter` blurs or looping animations, the frosted glass is a stretched 48px copy of the photo, and the screen only re-renders when a minute passes or the song changes.
+- Animations: the Pi 3 renders a steady 60 fps at rest, but drops to about 30 fps while half the screen moves, whatever CSS property drives it. So motion is short (200 ms for the channel list, instant for the highlight), and nothing that moves has the photo glass: its fixed background is repainted on every frame of movement, which caused hitches of 130 ms. Measure changes on the TV itself, through the DevTools tunnel below.
+
+### Looking at the TV from your computer
+
+Chromium on the Pi listens for DevTools on `localhost:9222`, which is only reachable from the Pi itself. Tunnel it over SSH:
+
+```
+ssh -N -L 9222:localhost:9222 pipi@raspberrypi.local
+```
+
+Then open `chrome://inspect` in Chrome on your computer, add `localhost:9222` under "Configure", and inspect the TV's page: console, network, and a live view of the screen.
+
+### Pi health
+
+`health.json` holds the Pi's temperature, load, memory, storage, uptime and power state (`vcgencmd get_throttled`). The app reads it from its own origin, so no CORS is involved. A warning shows under the now-playing card at 75 °C or more, on under-voltage or throttling, with 90% or more memory or storage in use, or when no measurement came in for 5 minutes.

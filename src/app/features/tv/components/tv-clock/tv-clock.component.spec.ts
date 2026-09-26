@@ -1,34 +1,23 @@
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { describe, expect, it } from 'vitest';
+import { ClockStore } from '@data/stores/clock.store';
 import { TvClockComponent } from './tv-clock.component';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('TvClockComponent', () => {
-    let component: TvClockComponent;
-    let fixture: ComponentFixture<TvClockComponent>;
+    it('should render the date and time from the clock', () => {
+        const now = signal(new Date(2026, 2, 1, 13, 37));
+        TestBed.configureTestingModule({ providers: [{ provide: ClockStore, useValue: { now } }] });
 
-    beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date(2026, 2, 1, 13, 37));
-
-        fixture = TestBed.createComponent(TvClockComponent);
-        component = fixture.componentInstance;
+        const fixture = TestBed.createComponent(TvClockComponent);
         fixture.detectChanges();
-    });
 
-    afterEach(() => vi.useRealTimers());
+        expect(fixture.nativeElement.querySelector('.date').textContent).toBe('Sunday 1 March');
+        expect(fixture.nativeElement.querySelector('.time').textContent).toBe('13:37');
 
-    it('should set the date and time on init', () => {
-        expect(component.date()).not.toEqual('');
-        expect(component.time()).toEqual('13:37');
-    });
+        now.set(new Date(2026, 2, 1, 13, 38));
+        fixture.detectChanges();
 
-    it('should update the time every second', () => {
-        vi.advanceTimersByTime(1000 * 60);
-
-        expect(component.time()).toEqual('13:38');
-    });
-
-    it('should render the date and time', () => {
-        expect(fixture.nativeElement.querySelector('time').textContent).toContain('13:37');
+        expect(fixture.nativeElement.querySelector('.time').textContent).toBe('13:38');
     });
 });

@@ -1,0 +1,14 @@
+<h2 class="widget-title">Raspberry Pi</h2>
+
+@if (health()) {
+    <dl class="rows">
+        @for (row of rows(); track row.label) {
+            <div class="row" [class.warning]="row.warning">
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.value }}</dd>
+            </div>
+        }
+    </dl>
+} @else {
+    <p class="empty">No measurements yet. Has pi/setup.sh run?</p>
+}

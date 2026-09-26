@@ -1,11 +1,14 @@
-import { interval, Subject } from 'rxjs';
+import { distinctUntilChanged, skip, Subject } from 'rxjs';
 import { DNB } from '@data/models/dnb.model';
 import { Kink } from '@data/models/kink.model';
 import { Flux } from '@data/models/flux.model';
 import { RadioService } from '@data/services/radio.service';
+import { PowerStore } from '@data/stores/power.store';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
-import { TvNpmfeedComponent } from '../tv-npmfeed/tv-npmfeed.component';
+import { IconComponent } from '@shared/components/icon/icon.component';
+import { formatTime } from '@data/utils/time';
+import { TvSystemComponent } from '../tv-system/tv-system.component';
 import {
     afterNextRender,
     Component,
@@ -19,15 +22,29 @@ import {
     viewChild,
 } from '@angular/core';
 
+export interface PlayedSong {
+    song: string;
+    artist: string;
+    station: string; // HTML, see RadioChannel.visibleName
+    time: string;
+}
+
+const HISTORY_LENGTH = 5;
+
 @Component({
     selector: 'app-tv-radio',
     templateUrl: './tv-radio.component.html',
     styleUrl: './tv-radio.component.scss',
-    imports: [TvNpmfeedComponent],
+    imports: [IconComponent, TvSystemComponent],
+    host: {
+        '(document:keydown)': 'startIfBlocked()',
+        '(document:pointerdown)': 'startIfBlocked()',
+    },
 })
 export class TvRadioComponent implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
     private readonly radioService = inject(RadioService);
+    private readonly power = inject(PowerStore);
     private readonly radioElement =
         viewChild.required<ElementRef<HTMLAudioElement>>('radioElement');
 
@@ -38,6 +55,11 @@ export class TvRadioComponent implements OnInit {
     public readonly nowPlaying = signal<Kink | Flux | DNB | undefined>(undefined);
     public readonly nowPlayingChannelIndex = signal(0);
     public readonly selectedChannelIndex = signal(0);
+    public readonly playing = signal(false);
+    // The kiosk allows autoplay, but a regular browser only plays audio after a key press or click
+    public readonly blocked = signal(false);
+    public readonly history = signal<PlayedSong[]>([]);
+    private current: PlayedSong | undefined;
 
     public readonly nowPlayingChannel = computed(
         () => this.radioChannels[this.nowPlayingChannelIndex()],
@@ -81,6 +103,12 @@ export class TvRadioComponent implements OnInit {
 
     constructor() {
         afterNextRender(() => this.startRadio());
+
+        // Nobody hears HDMI audio while the TV is off or on another input: drop the stream then,
+        // and pick it up again when the TV comes back
+        this.power.awake$
+            .pipe(distinctUntilChanged(), skip(1), takeUntilDestroyed())
+            .subscribe((awake) => (awake ? this.startRadio() : this.stopRadio()));
     }
 
     public startRadio(): void {
@@ -88,14 +116,64 @@ export class TvRadioComponent implements OnInit {
 
         radio.src = this.nowPlayingChannel().file;
         radio.volume = 0.5;
-        radio.play();
+        radio
+            .play()
+            .then(() => this.blocked.set(false))
+            .catch((error: unknown) => {
+                // Other rejections, like switching channels mid-load, sort themselves out
+                if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                    this.blocked.set(true);
+                }
+            });
+    }
+
+    public stopRadio(): void {
+        const radio = this.radioElement().nativeElement;
+
+        // Without a source the browser closes the connection to the stream as well
+        radio.pause();
+        radio.removeAttribute('src');
+        radio.load();
+    }
+
+    // Any interaction unlocks audio, so retry on the first one
+    public startIfBlocked(): void {
+        if (this.blocked()) {
+            this.startRadio();
+        }
     }
 
     public getNowPlaying(): void {
         this.radioService
             .getNowPlaying(this.nowPlayingChannel())
             .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe((response) => this.nowPlaying.set(response));
+            .subscribe((response) => {
+                this.nowPlaying.set(response);
+                this.recordSong();
+            });
+    }
+
+    // When a new song starts, the previous one moves to the history
+    public recordSong(): void {
+        const song = this.nowPlayingSong();
+        const artist = this.nowPlayingArtist();
+
+        if (!song || (song === this.current?.song && artist === this.current?.artist)) {
+            return;
+        }
+
+        const previous = this.current;
+
+        if (previous) {
+            this.history.update((history) => [previous, ...history].slice(0, HISTORY_LENGTH));
+        }
+
+        this.current = {
+            song,
+            artist,
+            station: this.nowPlayingChannel().visibleName,
+            time: formatTime(new Date()),
+        };
     }
 
     public setSelectedChannel(selectedChannelIndex: number): void {
@@ -140,10 +218,10 @@ export class TvRadioComponent implements OnInit {
     }
 
     public ngOnInit(): void {
-        this.getNowPlaying();
         this.listenForKeyDown();
 
-        interval(1000 * 30) // 30 seconds
+        this.power
+            .poll(1000 * 30) // 30 seconds
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe(() => this.getNowPlaying());
     }

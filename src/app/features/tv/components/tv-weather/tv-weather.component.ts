@@ -1,11 +1,13 @@
-import { forkJoin, interval } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { WEATHER_ICON_MAP } from '@data/constants/weather-icons';
-import { OpenMeteoService } from '@data/services/openmeteo.service';
-import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
-import { OpenMeteoAirQuality } from '@data/models/openmeteo-airquality.model';
-import { OpenMeteoAirqualityService } from '@data/services/openmeteo-airquality.service';
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { isWet } from '@data/utils/rain';
+import { ClockStore } from '@data/stores/clock.store';
+import { Component, computed, inject } from '@angular/core';
+import { WeatherStore } from '@data/stores/weather.store';
+import { TvRainComponent } from '../tv-rain/tv-rain.component';
+import { weatherCondition } from '@data/constants/weather-conditions';
+import { IconName } from '@shared/components/icon/icon-name.type';
+import { IconComponent } from '@shared/components/icon/icon.component';
+import { TvForecastComponent } from '../tv-forecast/tv-forecast.component';
+import { currentGusts, TrailCondition, trailCondition } from '@data/utils/outdoors';
 
 type PollenType =
     | 'alder_pollen'
@@ -17,19 +19,28 @@ type PollenType =
 
 type PollenGroup = 'tree' | 'grass' | 'weed';
 
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+const TRAIL_LABELS: Record<TrailCondition, string> = {
+    dry: 'Trails dry',
+    wet: 'Trails wet',
+    muddy: 'Trails muddy',
+};
+
 @Component({
     selector: 'app-tv-weather',
     templateUrl: './tv-weather.component.html',
     styleUrl: './tv-weather.component.scss',
+    imports: [IconComponent, TvRainComponent, TvForecastComponent],
 })
-export class TvWeatherComponent implements OnInit {
-    private readonly destroyRef = inject(DestroyRef);
-    private readonly openMeteoService = inject(OpenMeteoService);
-    private readonly openMeteoAirqualityService = inject(OpenMeteoAirqualityService);
+export class TvWeatherComponent {
+    private readonly clock = inject(ClockStore);
+    private readonly weatherStore = inject(WeatherStore);
 
-    public readonly forecast = signal<OpenMeteoForecast | undefined>(undefined);
-    public readonly airQuality = signal<OpenMeteoAirQuality | undefined>(undefined);
-    public readonly sun = signal<{ time?: string; type?: 'sunrise' | 'sunset' }>({});
+    public readonly forecast = this.weatherStore.forecast;
+    public readonly airQuality = this.weatherStore.airQuality;
+    public readonly rain = this.weatherStore.rain;
+    public readonly rainExpected = computed(() => this.rain().some(isWet));
 
     public readonly pollenGroups: Record<PollenGroup, PollenType[]> = {
         tree: ['alder_pollen', 'birch_pollen', 'olive_pollen'],
@@ -46,15 +57,55 @@ export class TvWeatherComponent implements OnInit {
         ragweed_pollen: [0, 0.2, 0.5, 1, 2, 3, 5, 10, 20, 40, 50],
     };
 
-    public readonly weatherIcon = computed(() => {
+    public readonly pollenLabels: Record<PollenGroup, { label: string; icon: IconName }> = {
+        tree: { label: 'Trees', icon: 'trees' },
+        grass: { label: 'Grasses', icon: 'wheat' },
+        weed: { label: 'Weeds', icon: 'flower-2' },
+    };
+
+    public readonly condition = computed(() => {
+        const current = this.forecast()?.current_weather;
+
+        return weatherCondition(current?.weathercode ?? -1, !!current?.is_day);
+    });
+
+    public readonly wind = computed(() => {
         const forecast = this.forecast();
 
         if (!forecast) return '';
 
-        return WEATHER_ICON_MAP[forecast.current_weather.weathercode][
-            forecast.current_weather.is_day ? 'day' : 'night'
-        ].image;
+        const { winddirection, windspeed } = forecast.current_weather;
+        const direction = COMPASS[Math.round(winddirection / 45) % COMPASS.length];
+        const gusts = currentGusts(forecast.hourly, this.clock.now());
+        const wind = `${direction} ${Math.round(windspeed)} km/h`;
+
+        return gusts === undefined ? wind : `${wind} · gusts ${Math.round(gusts)}`;
     });
+
+    // Only worth mentioning on a bright day: 5 and up means sunscreen
+    public readonly uv = computed(() => {
+        const uvMax = this.forecast()?.daily.uv_index_max[0];
+
+        return this.weatherStore.sun()?.phase !== 'night' && uvMax !== undefined && uvMax >= 5
+            ? Math.round(uvMax)
+            : undefined;
+    });
+
+    public readonly trail = computed(() => {
+        const forecast = this.forecast();
+
+        return forecast ? TRAIL_LABELS[trailCondition(forecast.hourly, this.clock.now())] : '';
+    });
+
+    public readonly pollen = computed(() =>
+        this.airQuality()
+            ? (Object.keys(this.pollenGroups) as PollenGroup[]).map((group) => ({
+                  group,
+                  ...this.pollenLabels[group],
+                  score: this.pollenGroupScore(group),
+              }))
+            : [],
+    );
 
     public pollenGroupScore(group: PollenGroup): number {
         const airQuality = this.airQuality();
@@ -71,47 +122,5 @@ export class TvWeatherComponent implements OnInit {
                     : thresholds.findLastIndex((threshold) => value >= threshold);
             }),
         );
-    }
-
-    public getWeather(): void {
-        forkJoin({
-            forecast: this.openMeteoService.getForecast(),
-            airQuality: this.openMeteoAirqualityService.getAirQuality(),
-        })
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(({ forecast, airQuality }) => {
-                this.forecast.set(forecast);
-                this.airQuality.set(airQuality);
-                this.setSun();
-            });
-    }
-
-    public ngOnInit(): void {
-        this.getWeather();
-
-        interval(1000 * 60 * 5) // 5 minutes
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(() => this.getWeather());
-    }
-
-    public setSun(): void {
-        const forecast = this.forecast();
-
-        if (!forecast) return;
-
-        const now = new Date().getTime();
-        const { daily } = forecast;
-
-        if (now <= daily.sunriseTodayTimestamp) {
-            this.sun.set({ type: 'sunrise', time: daily.sunriseToday });
-            return;
-        }
-
-        if (now <= daily.sunsetTodayTimestamp) {
-            this.sun.set({ type: 'sunset', time: daily.sunsetToday });
-            return;
-        }
-
-        this.sun.set({ type: 'sunrise', time: daily.sunriseTomorrow });
     }
 }

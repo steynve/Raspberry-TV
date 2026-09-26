@@ -1,9 +1,22 @@
-<app-tv-wallpaper [hidden]="hidden()">
-    <section class="tv" [class.overlay]="overlay()">
-        <aside class="tv-aside">
-            <app-tv-radio [keyDownSubject]="keyDownSubject" [overlay]="overlay()" />
-            <app-tv-weather />
+<app-tv-wallpaper [idle]="idle()">
+    <main class="tv" [class.overlay]="overlay()" [class.idle]="idle()">
+        <div class="tv-clock">
             <app-tv-clock />
-        </aside>
-    </section>
+            <app-tv-sky />
+        </div>
+        <div class="tv-radio">
+            <app-tv-radio [keyDownSubject]="keyDownSubject" [overlay]="overlay()" />
+            <app-tv-pi-alert />
+        </div>
+        <app-tv-weather class="tv-weather" />
+
+        @let nowPlaying = radio();
+        <app-tv-ambient
+            [visible]="idle()"
+            [song]="nowPlaying?.nowPlayingSong() ?? ''"
+            [artist]="nowPlaying?.nowPlayingArtist() ?? ''"
+            [station]="nowPlaying?.nowPlayingChannel().visibleName ?? ''"
+            [playing]="nowPlaying?.playing() ?? false"
+        />
+    </main>
 </app-tv-wallpaper>

@@ -1,0 +1,40 @@
+.sky {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: var(--text-body);
+    color: var(--fg-muted);
+    text-shadow: var(--shadow-text);
+}
+
+.sun {
+    color: var(--accent);
+
+    &.golden {
+        color: var(--warm);
+    }
+}
+
+.moon {
+    flex: none;
+    inline-size: 1.25em;
+    block-size: 1.25em;
+}
+
+.moon-dark {
+    fill: oklch(1 0 0 / 0.14);
+}
+
+.moon-lit {
+    fill: var(--fg);
+}
+
+// Rare enough to deserve some colour, and a soft glow like the real thing
+.aurora {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-inline-start: 0.5rem;
+    color: oklch(0.86 0.17 155);
+    text-shadow: 0 0 1.25rem oklch(0.75 0.2 155 / 0.6);
+}

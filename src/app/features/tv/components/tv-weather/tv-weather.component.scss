@@ -1,39 +1,89 @@
-@use 'variables' as *;
+// Fixed columns, so the widgets never shift: the middle stays open for the photo until it rains
+:host {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--gap);
+}
 
-.weather {
+.now {
+    grid-column: 1;
+}
+
+.rain {
+    grid-column: 2;
+}
+
+.week {
+    grid-column: 3;
+}
+
+.now-main {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.now-temperature {
+    font-size: var(--text-display);
+    font-weight: 250;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+}
+
+.now-condition {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    justify-content: center;
-    font-size: $global-px * 2;
-    line-height: $global-px * 2 * $golden-ratio;
+    gap: 0.25rem;
+    font-size: var(--text-lead);
+    font-weight: 500;
+    line-height: 1.2;
+}
 
-    section {
+.now-icon {
+    font-size: 3rem;
+    color: var(--accent);
+}
+
+.now-details,
+.pollen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.75rem;
+    font-size: var(--text-body);
+    color: var(--fg-muted);
+
+    li {
         display: flex;
         align-items: center;
-        justify-content: center;
+        gap: 0.5rem;
     }
+}
 
-    figure {
-        position: relative;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: $global-px * 2.5;
-        width: $global-px * 2.5;
-        margin-left: $global-px * 0.5;
+// Three groups on one line, so a notch smaller than the details
+.pollen {
+    font-size: var(--text-meta);
+    margin-block-start: auto;
+    padding-block-start: 1rem;
+    border-block-start: 1px solid var(--glass-edge);
+}
 
-        img {
-            position: absolute;
-            object-fit: contain;
-            width: auto;
-            height: 100%;
-            max-width: 100%;
-            opacity: 0.8;
+// The score shifts from calm to amber as the pollen count (--level, 0 to 1) rises
+.pollen-item {
+    --pollen-color: color-mix(in oklch, var(--fg-muted), var(--warm) calc(var(--level) * 100%));
 
-            &.custom {
-                max-height: $global-px * 1.5;
-            }
-        }
+    color: var(--pollen-color);
+
+    &.none {
+        color: var(--fg-subtle);
     }
+}
+
+.pollen-score {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.now-uv {
+    color: var(--warm);
 }

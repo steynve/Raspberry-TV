@@ -19,6 +19,7 @@
         "paths": {
             "@data/*": ["./src/app/data/*"],
             "@features/*": ["./src/app/features/*"],
+            "@shared/*": ["./src/app/shared/*"],
             "@environments/*": ["./src/environments/*"]
         }
     },

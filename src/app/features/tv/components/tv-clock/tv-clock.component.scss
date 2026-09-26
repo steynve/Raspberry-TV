@@ -1,18 +1,22 @@
-@use 'variables' as *;
+.clock {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-shadow: var(--shadow-text);
+}
 
-.datetime {
-    font-size: $global-px * 5;
-    line-height: $global-px * 5;
-    text-align: right;
+.date {
+    font-size: var(--text-body);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+}
 
-    span {
-        display: block;
-        font-size: $global-px * 2;
-        line-height: $global-px * 2 * $golden-ratio;
-        padding-bottom: $global-px * 0.5;
-
-        &::first-letter {
-            text-transform: capitalize;
-        }
-    }
+.time {
+    font-size: var(--text-clock);
+    font-weight: 200;
+    line-height: 0.85;
+    letter-spacing: -0.045em;
+    font-variant-numeric: tabular-nums;
 }
