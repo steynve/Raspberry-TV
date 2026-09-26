@@ -1,33 +1,25 @@
 import { Kink } from '../models/kink.model';
-import { TestBed } from '@angular/core/testing';
+import { describe, expect, it } from 'vitest';
 import { KinkSerializer } from './kink.serializer';
 import { RadioServiceMock } from '../services/mocks/radio.service.mock';
 
 describe('KinkSerializer', () => {
-    let serializer: KinkSerializer;
-    const mock = new RadioServiceMock();
-
-    beforeEach(() => {
-        TestBed.configureTestingModule({
-            providers: [KinkSerializer],
-        });
-
-        serializer = TestBed.inject(KinkSerializer);
-    });
-
-    it('should be created', () => {
-        expect(serializer).toBeTruthy();
-    });
+    const serializer = new KinkSerializer();
+    const { kinkResponse } = new RadioServiceMock();
 
     it('should serialize from json to model', () => {
-        mock.getNowPlayingKink().subscribe((data) => {
-            expect(serializer.fromJson(data as Kink)).toEqual(data as Kink);
-        });
+        const result = serializer.fromJson(serializer.toJson(kinkResponse) as Kink);
+
+        expect(result).toBeInstanceOf(Kink);
+        expect(result).toEqual(kinkResponse);
     });
 
     it('should serialize from model to json', () => {
-        mock.getNowPlayingKink().subscribe((data) => {
-            expect(typeof serializer.toJson(data as Kink)).toBe('object');
+        expect(serializer.toJson(kinkResponse)).toEqual({
+            stations: kinkResponse.stations,
+            playing: kinkResponse.playing,
+            extended: kinkResponse.extended,
+            hitlist: kinkResponse.hitlist,
         });
     });
 });

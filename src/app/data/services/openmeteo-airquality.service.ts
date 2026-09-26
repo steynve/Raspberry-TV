@@ -1,8 +1,7 @@
 import { Observable } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { HttpService } from './http.service';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { environment } from '@environments/environment';
 import { OpenMeteoAirQuality } from '@data/models/openmeteo-airquality.model';
 import { OpenMeteoAirqualitySerializer } from '@data/serializers/openmeteo-airquality.serializer';
 
@@ -10,8 +9,8 @@ import { OpenMeteoAirqualitySerializer } from '@data/serializers/openmeteo-airqu
     providedIn: 'root',
 })
 export class OpenMeteoAirqualityService extends HttpService<OpenMeteoAirQuality> {
-    constructor(httpClient: HttpClient) {
-        super(httpClient);
+    constructor() {
+        super();
         this.setBaseUrl('https://air-quality-api.open-meteo.com/v1');
         this.setSerializer(new OpenMeteoAirqualitySerializer());
     }

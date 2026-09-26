@@ -1,116 +1,73 @@
-import { provideHttpClient } from '@angular/common/http';
 import { PexelsService } from '@data/services/pexels.service';
 import { TvWallpaperComponent } from './tv-wallpaper.component';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PexelsServiceMock } from '@data/services/mocks/pexels.service.mock';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('TvWallpaperComponent', () => {
     let component: TvWallpaperComponent;
     let fixture: ComponentFixture<TvWallpaperComponent>;
     let pexelsService: PexelsService;
 
-    beforeEach(waitForAsync(() => {
-        TestBed.configureTestingModule({
-            imports: [TvWallpaperComponent],
-            providers: [
-                provideHttpClient(),
-                provideHttpClientTesting(),
-                { provide: PexelsService, useClass: PexelsServiceMock },
-            ],
-        }).compileComponents();
-    }));
+    const gradient = 'linear-gradient(to bottom, rgba(81, 68, 33, 0.75), rgba(0, 0, 0, 0.75))';
 
     beforeEach(() => {
-        fixture = TestBed.createComponent(TvWallpaperComponent);
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 6, 15));
+
+        TestBed.configureTestingModule({
+            providers: [{ provide: PexelsService, useClass: PexelsServiceMock }],
+        });
+
         pexelsService = TestBed.inject(PexelsService);
+        vi.spyOn(pexelsService, 'getPhotos');
+
+        fixture = TestBed.createComponent(TvWallpaperComponent);
         component = fixture.componentInstance;
         fixture.detectChanges();
     });
 
-    it('should create', () => {
-        expect(component).toBeTruthy();
+    afterEach(() => vi.useRealTimers());
+
+    it('should fetch seasonal photos on init', () => {
+        expect(pexelsService.getPhotos).toHaveBeenCalledWith('summer nature forest wallpaper');
     });
 
-    describe('currentBackgroundImage()', () => {
-        it('should return todays photo with a gradient overlay', () => {
-            expect(component.currentBackgroundImage).toEqual(
-                "linear-gradient(to bottom, rgba(81, 68, 33, 0.75), rgba(0, 0, 0, 0.75)), url('original.jpg?auto=compress&fit=crop&w=1920&h=1080')",
+    it('should use the day of the month as photo index', () => {
+        expect(component.dayIndex()).toBe(15);
+    });
+
+    describe('currentBackgroundImage', () => {
+        it("should return today's photo with a gradient overlay", () => {
+            expect(component.currentBackgroundImage()).toEqual(
+                `${gradient}, url('original.jpg?auto=compress&fit=crop&w=1920&h=1080')`,
             );
         });
 
-        it('should only return the gradient when the photos are undefined', () => {
-            component.photos = undefined;
+        it('should only return the gradient when there are no photos', () => {
+            component.photos.set(undefined);
 
-            expect(component.currentBackgroundImage).toEqual(
-                'linear-gradient(to bottom, rgba(81, 68, 33, 0.75), rgba(0, 0, 0, 0.75))',
-            );
+            expect(component.currentBackgroundImage()).toEqual(gradient);
         });
     });
 
-    describe('getPhotos()', () => {
-        it('should call pexelsService.getPhotos()', () => {
-            const season = ['winter', 'spring', 'summer', 'autumn'][
-                Math.floor((new Date().getMonth() / 12) * 4) % 4
-            ];
+    it('should refresh the photos every week', () => {
+        vi.advanceTimersByTime(1000 * 60 * 60 * 24 * 7);
 
-            spyOn(pexelsService, 'getPhotos').and.callThrough();
-
-            component.getPhotos();
-
-            expect(pexelsService.getPhotos).toHaveBeenCalledWith(
-                `${season} nature forest wallpaper`,
-            );
-        });
-
-        it('should call itself after 1 week', () => {
-            jasmine.clock().install();
-            spyOn(component, 'getPhotos').and.callThrough();
-
-            component.getPhotos();
-
-            jasmine.clock().tick(1000 * 60 * 24 * 7);
-
-            expect(component.getPhotos).toHaveBeenCalledTimes(2);
-
-            jasmine.clock().uninstall();
-        });
+        expect(pexelsService.getPhotos).toHaveBeenCalledTimes(2);
     });
 
-    describe('setCurrentDay()', () => {
-        it('should set the dayIndex variable', () => {
-            const testIndex = new Date().getDate();
+    it('should update the day index every 6 hours', () => {
+        vi.setSystemTime(new Date(2026, 6, 16));
+        vi.advanceTimersByTime(1000 * 60 * 60 * 6);
 
-            component.setCurrentDay();
-
-            expect(component.dayIndex).toEqual(testIndex);
-        });
-
-        it('should call itself after 6 hours', () => {
-            jasmine.clock().install();
-            spyOn(component, 'setCurrentDay').and.callThrough();
-
-            component.setCurrentDay();
-
-            jasmine.clock().tick(1000 * 60 * 6);
-
-            expect(component.setCurrentDay).toHaveBeenCalledTimes(2);
-
-            jasmine.clock().uninstall();
-        });
+        expect(component.dayIndex()).toBe(16);
     });
 
-    describe('ngOnInit()', () => {
-        it('should call getPhotos()', () => {
-            spyOn(component, 'getPhotos').and.callThrough();
-            component.ngOnInit();
-            expect(component.getPhotos).toHaveBeenCalled();
-        });
+    it('should render the hidden class', () => {
+        fixture.componentRef.setInput('hidden', true);
+        fixture.detectChanges();
 
-        it('should call setCurrentDay()', () => {
-            spyOn(component, 'setCurrentDay').and.callThrough();
-            component.ngOnInit();
-            expect(component.setCurrentDay).toHaveBeenCalled();
-        });
+        expect(fixture.nativeElement.querySelector('.tv-wallpaper').classList).toContain('hidden');
     });
 });

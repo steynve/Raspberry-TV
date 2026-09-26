@@ -1,33 +1,20 @@
 import { Flux } from '../models/flux.model';
-import { TestBed } from '@angular/core/testing';
+import { describe, expect, it } from 'vitest';
 import { FluxSerializer } from './flux.serializer';
 import { RadioServiceMock } from '../services/mocks/radio.service.mock';
 
 describe('FluxSerializer', () => {
-    let serializer: FluxSerializer;
-    const mock = new RadioServiceMock();
-
-    beforeEach(() => {
-        TestBed.configureTestingModule({
-            providers: [FluxSerializer],
-        });
-
-        serializer = TestBed.inject(FluxSerializer);
-    });
-
-    it('should be created', () => {
-        expect(serializer).toBeTruthy();
-    });
+    const serializer = new FluxSerializer();
+    const { fluxResponse } = new RadioServiceMock();
 
     it('should serialize from json to model', () => {
-        mock.getNowPlayingFlux('apiRef').subscribe((data) => {
-            expect(serializer.fromJson(data as Flux)).toEqual(data as Flux);
-        });
+        const result = serializer.fromJson({ trackInfo: fluxResponse.trackInfo } as Flux);
+
+        expect(result).toBeInstanceOf(Flux);
+        expect(result).toEqual(fluxResponse);
     });
 
     it('should serialize from model to json', () => {
-        mock.getNowPlayingFlux('').subscribe((data) => {
-            expect(typeof serializer.toJson(data as Flux)).toBe('object');
-        });
+        expect(serializer.toJson(fluxResponse)).toEqual({ trackInfo: fluxResponse.trackInfo });
     });
 });

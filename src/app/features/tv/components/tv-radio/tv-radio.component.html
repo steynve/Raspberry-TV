@@ -1,16 +1,16 @@
 <audio #radioElement></audio>
 
 <article class="now-playing">
-    <h3 class="radio" [innerHTML]="nowPlayingChannel.visibleName"></h3>
-    <h2>{{ nowPlayingSong }}</h2>
-    <h3>{{ nowPlayingArtist }}</h3>
+    <h3 class="radio" [innerHTML]="nowPlayingChannel().visibleName"></h3>
+    <h2>{{ nowPlayingSong() }}</h2>
+    <h3>{{ nowPlayingArtist() }}</h3>
 </article>
 
 <section class="channels">
     <ul>
-        @for (channel of radioService.radioChannels; track channel; let i = $index) {
+        @for (channel of radioChannels; track channel.file; let i = $index) {
             <li
-                [ngClass]="i === selectedChannelIndex ? 'selected' : ''"
+                [class.selected]="i === selectedChannelIndex()"
                 [innerHTML]="channel.visibleName"
             ></li>
         }

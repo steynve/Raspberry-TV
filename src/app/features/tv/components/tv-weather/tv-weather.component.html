@@ -1,23 +1,23 @@
 <div class="weather">
-    @if (forecast) {
+    @if (forecast(); as forecast) {
         <section>
             <span> {{ forecast.current_weather.temperature.toFixed() }} °C </span>
             <figure>
-                <img [src]="weatherIcon" alt="weather icon" />
+                <img [src]="weatherIcon()" alt="weather icon" />
             </figure>
         </section>
     }
-    @if (sun.time) {
+    @if (sun().time) {
         <section>
             <span>
-                {{ sun.time }}
+                {{ sun().time }}
             </span>
             <figure>
-                <img src="/assets/images/feather/{{ sun.type }}.svg" class="custom" alt="sun" />
+                <img src="/assets/images/feather/{{ sun().type }}.svg" class="custom" alt="sun" />
             </figure>
         </section>
     }
-    @if (airQuality) {
+    @if (airQuality()) {
         @if (pollenGroupScore('tree')) {
             <section>
                 <span>{{ pollenGroupScore('tree') }}/10</span>

@@ -1,4 +1,4 @@
-@import 'variables';
+@use 'variables' as *;
 
 .tv-npmfeed {
     padding: $global-px * 2.5;

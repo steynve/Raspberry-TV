@@ -1,10 +1,9 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { TvComponent } from '@features/tv/tv.component';
 
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html',
-    styleUrl: './app.component.scss',
-    imports: [RouterOutlet],
+    imports: [TvComponent],
 })
 export class AppComponent {}

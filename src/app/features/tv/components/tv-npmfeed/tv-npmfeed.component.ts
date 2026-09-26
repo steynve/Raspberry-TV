@@ -2,7 +2,7 @@ import { interval } from 'rxjs';
 import { Npm } from '@data/models/npm.model';
 import { NpmService } from '@data/services/npm.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 
 @Component({
     selector: 'app-tv-npmfeed',
@@ -10,19 +10,23 @@ import { Component, DestroyRef, inject, OnInit } from '@angular/core';
     styleUrl: './tv-npmfeed.component.scss',
 })
 export class TvNpmfeedComponent implements OnInit {
-    public destroyRef = inject(DestroyRef);
+    private readonly destroyRef = inject(DestroyRef);
+    private readonly npmService = inject(NpmService);
 
-    constructor(private npmService: NpmService) {}
-
-    public packages: Npm[] = [{ name: '@foxreis/tizentube' }, { name: '@angular/core' }];
+    public readonly packages = signal<Npm[]>([
+        { name: '@foxreis/tizentube' },
+        { name: '@angular/core' },
+    ]);
 
     public getFeed(): void {
-        this.packages.forEach((pkg) => {
+        this.packages().forEach(({ name }) => {
             this.npmService
-                .getDetails(pkg.name)
+                .getDetails(name)
                 .pipe(takeUntilDestroyed(this.destroyRef))
-                .subscribe((response) => {
-                    pkg.distTags = response.distTags;
+                .subscribe(({ distTags }) => {
+                    this.packages.update((packages) =>
+                        packages.map((pkg) => (pkg.name === name ? { ...pkg, distTags } : pkg)),
+                    );
                 });
         });
     }
@@ -30,7 +34,7 @@ export class TvNpmfeedComponent implements OnInit {
     public ngOnInit(): void {
         this.getFeed();
 
-        interval(24 * 60 * 60 * 1000)
+        interval(1000 * 60 * 60 * 24) // 1 day
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe(() => this.getFeed());
     }

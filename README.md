@@ -1,6 +1,6 @@
 # Raspberry
 
-An open-source application for personal use.
+An open-source application for personal use: a TV dashboard for a Raspberry Pi kiosk, showing a seasonal wallpaper, internet radio, weather, pollen and a clock.
 
 ## Open for modification
 
@@ -8,8 +8,7 @@ This project can be downloaded and modified by anyone interested.
 
 ### Requirements
 
-- Download and install [Node.js](https://nodejs.org/). Node 20 LTS or higher recommended
-- Install Angular CLI globally `npm install -g @angular/cli`. Angular 18 is recommended.
+- Download and install [Node.js](https://nodejs.org/). Node 22 LTS or higher is required (Angular 22).
 
 ### Setup
 
@@ -27,10 +26,14 @@ This executes a custom bash script providing multiple options, but is mainly foc
 
 ## Unit testing
 
-Run `npm run test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+Run `npm run test` to execute the unit tests via [Vitest](https://vitest.dev/) in watch mode, or `npm run test:no-watch` for a single run.
 
-Visit `root/coverage/raspberry/index.html` for a detailed coverage report via [istanbul](https://istanbul.js.org/).<br>
+Visit `root/coverage/raspberry/index.html` for a detailed coverage report.<br>
 Note that the coverage folder is only created after running a test for the first time, and is hidden by default.
+
+## Linting
+
+Run `npm run lint` to lint the project via [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/).
 
 ## TV notes
 

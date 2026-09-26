@@ -1,8 +1,8 @@
-<div class="tv-npmfeed">
-    @for (package of packages; track $index) {
+<ul class="tv-npmfeed">
+    @for (package of packages(); track package.name) {
         <li>
             <span>{{ package.name }}</span>
             <span>{{ package.distTags?.latest }}</span>
         </li>
     }
-</div>
+</ul>

@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { PexelsService } from './pexels.service';
 import { provideHttpClient } from '@angular/common/http';
+import { environment } from '@environments/environment';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 describe('PexelsService', () => {
@@ -16,29 +18,17 @@ describe('PexelsService', () => {
         httpMock = TestBed.inject(HttpTestingController);
     });
 
-    afterEach(() => {
-        httpMock.verify();
-    });
+    afterEach(() => httpMock.verify());
 
-    it('should be created', () => {
-        expect(service).toBeTruthy();
-    });
+    it('should search landscape photos with the API key', () => {
+        service.getPhotos('query').subscribe();
 
-    describe('getPhotos()', () => {
-        it('should make a GET request via the abstract http class', () => {
-            const abstractMethod = spyOn(service, 'read').and.callThrough();
+        const request = httpMock.expectOne(
+            'https://api.pexels.com/v1/search?query=query&orientation=landscape&per_page=60&size=large',
+        );
 
-            service.getPhotos('query').subscribe(() => {
-                expect(abstractMethod).toHaveBeenCalled();
-            });
+        expect(request.request.headers.get('Authorization')).toBe(environment.pexels_api_key);
 
-            const request = httpMock.expectOne(
-                'https://api.pexels.com/v1/search?query=query&orientation=landscape&per_page=60&size=large',
-            );
-
-            expect(request.request.method).toBe('GET');
-
-            request.flush([]);
-        });
+        request.flush({});
     });
 });

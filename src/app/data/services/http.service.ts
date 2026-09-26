@@ -1,28 +1,27 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { Serializer } from '../serializers/serializer';
 import { AbstractModel } from '../models/abstract.model';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 
+type HttpParams = Record<
+    string,
+    string | number | boolean | readonly (string | number | boolean)[]
+>;
+
 @Injectable({
     providedIn: 'root',
 })
 export abstract class HttpService<T extends AbstractModel> {
+    protected readonly http = inject(HttpClient);
+
     public headers: HttpHeaders | undefined;
-    public params:
-        | {
-              [param: string]: string | number | boolean | ReadonlyArray<string | number | boolean>;
-          }
-        | undefined;
+    public params: HttpParams | undefined;
 
     public baseUrl!: string;
     public resource!: string;
     public serializer!: Serializer;
-
-    constructor(public http: HttpClient) {
-        this.http = http;
-    }
 
     public read(): Observable<T> {
         return this.http
@@ -52,9 +51,7 @@ export abstract class HttpService<T extends AbstractModel> {
         this.headers = headers;
     }
 
-    public setParams(params: {
-        [param: string]: string | number | boolean | ReadonlyArray<string | number | boolean>;
-    }): void {
+    public setParams(params: HttpParams): void {
         this.params = params;
     }
 

@@ -1,13 +1,12 @@
-@import 'variables';
+@use 'variables' as *;
 
 .tv {
     height: 100%;
     width: 100%;
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding: $global-px * 2.5;
-    gap: $global-px * 5;
     color: #cccccc;
     text-shadow: 0 2px 4px rgb(0 0 0 / 50%);
     transition: 0.2s transform ease-in-out;
@@ -16,24 +15,10 @@
         transform: translateX(-20vw);
     }
 
-    &-main {
-        overflow: hidden;
-        display: flex;
-        justify-content: space-between;
-        flex: 0 0 auto;
-    }
-
     &-aside {
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         align-items: flex-end;
-    }
-
-    app-camera {
-        display: block;
-        position: absolute;
-        bottom: $global-px * 2.5;
-        right: $global-px * 2.5;
     }
 }

@@ -1,106 +1,67 @@
 import { HttpService } from './http.service';
+import { Photos } from '../models/photos.model';
+import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AbstractModel } from '../models/abstract.model';
 import { PhotosSerializer } from '../serializers/photos.serializer';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpHeaders, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
+@Injectable({ providedIn: 'root' })
+class TestHttpService extends HttpService<Photos> {
+    constructor() {
+        super();
+        this.setBaseUrl('https://localhost/');
+        this.setResource('resource');
+        this.setSerializer(new PhotosSerializer());
+    }
+}
+
 describe('HttpService', () => {
-    let service: HttpService<AbstractModel>;
+    let service: TestHttpService;
     let httpMock: HttpTestingController;
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            providers: [
-                provideHttpClient(),
-                provideHttpClientTesting(),
-                {
-                    provide: 'url',
-                    useValue: 'http://localhost:8080',
-                },
-                {
-                    provide: 'resource',
-                    useValue: 'config',
-                },
-                {
-                    provide: 'serializer',
-                    useValue: PhotosSerializer,
-                },
-            ],
+            providers: [provideHttpClient(), provideHttpClientTesting()],
         });
 
-        service = TestBed.inject(HttpService);
+        service = TestBed.inject(TestHttpService);
         httpMock = TestBed.inject(HttpTestingController);
-
-        service.baseUrl = 'localhost:8080/';
-        service.resource = 'resource/';
-        service.serializer = new PhotosSerializer();
     });
 
-    afterEach(() => {
-        httpMock.verify();
-    });
-
-    it('should be created', () => {
-        expect(service).toBeTruthy();
-    });
+    afterEach(() => httpMock.verify());
 
     describe('read()', () => {
-        it('should call catchError() on bad call', () => {
-            spyOn(service, 'catchError').and.callThrough();
+        it('should GET baseUrl + resource with headers and params and serialize the result', () => {
+            service.setHeaders(new HttpHeaders({ foo: 'bar' }));
+            service.setParams({ query: 'forest' });
 
-            service.read().subscribe({
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                error: (err) => (err = undefined),
-            });
+            let result: Photos | undefined;
+            service.read().subscribe((response) => (result = response));
 
-            httpMock.expectOne(service.baseUrl + service.resource).flush('', {
-                status: 400,
-                statusText: 'Bad Request',
-            });
+            const request = httpMock.expectOne('https://localhost/resource?query=forest');
+            expect(request.request.method).toBe('GET');
+            expect(request.request.headers.get('foo')).toBe('bar');
+
+            request.flush({ total_results: 1, page: 1, per_page: 1, photos: [], next_page: '' });
+
+            expect(result).toBeInstanceOf(Photos);
+            expect(result?.total_results).toBe(1);
+        });
+
+        it('should pass errors through catchError()', () => {
+            vi.spyOn(service, 'catchError');
+            const error = vi.fn();
+
+            service.read().subscribe({ error });
+
+            httpMock
+                .expectOne('https://localhost/resource')
+                .flush('', { status: 400, statusText: 'Bad Request' });
 
             expect(service.catchError).toHaveBeenCalled();
-        });
-    });
-
-    describe('setBaseUrl()', () => {
-        it('should set the base url property', () => {
-            service.setBaseUrl('http://localhost');
-            expect(service.baseUrl).toEqual('http://localhost');
-        });
-    });
-
-    describe('setResource()', () => {
-        it('should set the resource property', () => {
-            service.setResource('photos');
-            expect(service.resource).toEqual('photos');
-        });
-    });
-
-    describe('setHeaders()', () => {
-        it('should set the headers property', () => {
-            service.setHeaders(
-                new HttpHeaders({
-                    foo: 'bar',
-                }),
-            );
-            expect(service.headers).toEqual(jasmine.any(HttpHeaders));
-        });
-    });
-
-    describe('setParams()', () => {
-        it('should set the params property', () => {
-            service.setParams({
-                key: 'value',
-            });
-            expect(service.params).toEqual(jasmine.any(Object));
-        });
-    });
-
-    describe('setSerializer()', () => {
-        it('should set the serializer property', () => {
-            service.setSerializer(new PhotosSerializer());
-            expect(service.serializer).toEqual(jasmine.any(PhotosSerializer));
+            expect(error).toHaveBeenCalled();
         });
     });
 });

@@ -1,40 +1,36 @@
 import { interval } from 'rxjs';
-import { CommonModule } from '@angular/common';
 import { Photos } from '@data/models/photos.model';
 import { PexelsService } from '@data/services/pexels.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, DestroyRef, Input, OnInit, inject } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, OnInit, signal } from '@angular/core';
 
 @Component({
     selector: 'app-tv-wallpaper',
     templateUrl: './tv-wallpaper.component.html',
     styleUrl: './tv-wallpaper.component.scss',
-    imports: [CommonModule],
 })
 export class TvWallpaperComponent implements OnInit {
-    @Input() public idle!: boolean;
-    @Input() public hidden!: boolean;
-    @Input() public overlay!: boolean;
+    private readonly destroyRef = inject(DestroyRef);
+    private readonly pexelsService = inject(PexelsService);
+    private readonly photoParameters = '?auto=compress&fit=crop&w=1920&h=1080';
+    private readonly gradient =
+        'linear-gradient(to bottom, rgba(81, 68, 33, 0.75), rgba(0, 0, 0, 0.75))';
 
-    public dayIndex = 0;
-    public destroyRef = inject(DestroyRef);
-    public photos: Photos | undefined;
-    private photoParameters = '?auto=compress&fit=crop&w=1920&h=1080';
-    private gradient = 'linear-gradient(to bottom, rgba(81, 68, 33, 0.75), rgba(0, 0, 0, 0.75))';
+    public readonly hidden = input(false);
+    public readonly dayIndex = signal(0);
+    public readonly photos = signal<Photos | undefined>(undefined);
 
-    constructor(private pexelsService: PexelsService) {}
+    public readonly currentBackgroundImage = computed(() => {
+        const photos = this.photos()?.photos;
 
-    public get currentBackgroundImage(): string {
-        let url = '';
-
-        if (this.photos?.photos.length) {
-            const photo = this.photos.photos[this.dayIndex].src.original;
-
-            url = `, url('${photo}${this.photoParameters}')`;
+        if (!photos?.length) {
+            return this.gradient;
         }
 
-        return this.gradient + url;
-    }
+        const photo = photos[this.dayIndex()].src.original;
+
+        return `${this.gradient}, url('${photo}${this.photoParameters}')`;
+    });
 
     public getPhotos(): void {
         const season = ['winter', 'spring', 'summer', 'autumn'][
@@ -44,14 +40,11 @@ export class TvWallpaperComponent implements OnInit {
         this.pexelsService
             .getPhotos(`${season} nature forest wallpaper`)
             .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe((result) => {
-                this.photos = result;
-            });
+            .subscribe((result) => this.photos.set(result));
     }
 
     public setCurrentDay(): void {
-        const today = new Date();
-        this.dayIndex = today.getDate();
+        this.dayIndex.set(new Date().getDate());
     }
 
     public ngOnInit(): void {

@@ -4,7 +4,6 @@ import { Injectable } from '@angular/core';
 import { Kink } from '../models/kink.model';
 import { Flux } from '../models/flux.model';
 import { HttpService } from './http.service';
-import { HttpClient } from '@angular/common/http';
 import { RadioChannel } from '../models/radio-channel.model';
 import { DNBSerializer } from '../serializers/dnb.serializer';
 import { KinkSerializer } from '../serializers/kink.serializer';
@@ -77,10 +76,6 @@ export class RadioService extends HttpService<Kink | Flux | DNB> {
             '',
         ),
     ];
-
-    constructor(httpClient: HttpClient) {
-        super(httpClient);
-    }
 
     public getNowPlaying(radioChannel: RadioChannel): Observable<Kink | Flux | DNB> {
         if (radioChannel.apiSrc === 'KINK') {

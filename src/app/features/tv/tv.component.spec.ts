@@ -1,69 +1,47 @@
 import { Subject } from 'rxjs';
 import { TvComponent } from './tv.component';
-import { Component, Input } from '@angular/core';
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { Component, input } from '@angular/core';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
-@Component({
-    selector: 'app-tv-news',
-    template: '',
-})
-class TvNewsComponent {
-    @Input() public keyDownSubject!: Subject<KeyboardEventKey>;
-    @Input() public overlay!: boolean;
+@Component({ selector: 'app-tv-radio', template: '' })
+class TvRadioStubComponent {
+    public readonly keyDownSubject = input.required<Subject<KeyboardEventKey>>();
+    public readonly overlay = input(false);
 }
 
-@Component({
-    selector: 'app-tv-radio',
-    template: '',
-})
-class TvRadioComponent {
-    @Input() public keyDownSubject!: Subject<KeyboardEventKey>;
-    @Input() public overlay!: boolean;
-}
+@Component({ selector: 'app-tv-clock', template: '' })
+class TvClockStubComponent {}
 
-@Component({
-    selector: 'app-tv-clock',
-    template: '',
-})
-class TvClockComponent {}
+@Component({ selector: 'app-tv-weather', template: '' })
+class TvWeatherStubComponent {}
 
-@Component({
-    selector: 'app-tv-weather',
-    template: '',
-})
-class TvWeatherComponent {}
-
-@Component({
-    selector: 'app-tv-wallpaper',
-    template: '',
-})
-class TvWallpaperComponent {
-    @Input() public idle!: boolean;
-    @Input() public overlay!: boolean;
+@Component({ selector: 'app-tv-wallpaper', template: '<ng-content />' })
+class TvWallpaperStubComponent {
+    public readonly hidden = input(false);
 }
 
 describe('TvComponent', () => {
     let component: TvComponent;
     let fixture: ComponentFixture<TvComponent>;
 
-    beforeEach(waitForAsync(() => {
-        TestBed.configureTestingModule({
-            imports: [
-                TvComponent,
-                TvNewsComponent,
-                TvRadioComponent,
-                TvClockComponent,
-                TvWeatherComponent,
-                TvWallpaperComponent,
-            ],
-            providers: [provideHttpClient(), provideHttpClientTesting()],
-        }).compileComponents();
-    }));
+    const pressKey = (key: KeyboardEventKey): void => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    };
 
     beforeEach(() => {
+        TestBed.overrideComponent(TvComponent, {
+            set: {
+                imports: [
+                    TvRadioStubComponent,
+                    TvClockStubComponent,
+                    TvWeatherStubComponent,
+                    TvWallpaperStubComponent,
+                ],
+            },
+        });
+
         fixture = TestBed.createComponent(TvComponent);
         component = fixture.componentInstance;
         fixture.detectChanges();
@@ -74,153 +52,55 @@ describe('TvComponent', () => {
     });
 
     describe('toggleAppVisibility()', () => {
-        it('should toggle the hidden boolean', () => {
-            expect(component.hidden).toBeFalse();
+        it('should toggle hidden', () => {
+            component.toggleAppVisibility();
+            expect(component.hidden()).toBe(true);
 
             component.toggleAppVisibility();
-
-            expect(component.hidden).toBeTrue();
-
-            component.toggleAppVisibility();
-
-            expect(component.hidden).toBeFalse();
+            expect(component.hidden()).toBe(false);
         });
 
-        it('should call toggleOverlayVisibility() when overlay is true', () => {
-            spyOn(component, 'toggleOverlayVisibility').and.callThrough();
-            component.overlay = true;
+        it('should close the overlay instead of hiding the app when the overlay is open', () => {
+            component.overlay.set(true);
 
             component.toggleAppVisibility();
 
-            expect(component.toggleOverlayVisibility).toHaveBeenCalled();
+            expect(component.overlay()).toBe(false);
+            expect(component.hidden()).toBe(false);
         });
     });
 
     describe('toggleOverlayVisibility()', () => {
-        it('should toggle the overlay boolean', () => {
-            expect(component.overlay).toBeFalse();
+        it('should toggle overlay', () => {
+            component.toggleOverlayVisibility();
+            expect(component.overlay()).toBe(true);
 
             component.toggleOverlayVisibility();
-
-            expect(component.overlay).toBeTrue();
-
-            component.toggleOverlayVisibility();
-
-            expect(component.overlay).toBeFalse();
+            expect(component.overlay()).toBe(false);
         });
     });
 
-    describe('setIdleTimeout()', () => {
-        it('should always set idle to false', () => {
-            component.idle = true;
-            component.setIdleTimeout(0);
-            expect(component.idle).toBeFalse();
+    describe('keyboard', () => {
+        it('should forward window keydown events to keyDownSubject', () => {
+            const keys: KeyboardEventKey[] = [];
+            component.keyDownSubject.subscribe((key) => keys.push(key));
+
+            pressKey('ArrowUp');
+
+            expect(keys).toEqual(['ArrowUp']);
         });
 
-        it('should always set idle back to true after the timeout', () => {
-            const ms = 1000;
-            jasmine.clock().install();
-            component.idle = true;
-            component.setIdleTimeout(ms);
-            jasmine.clock().tick(ms);
-            expect(component.idle).toBeTrue();
-            jasmine.clock().uninstall();
-        });
-    });
-
-    describe('setIdleTimeout()', () => {
-        it('should always set idle to false', () => {
-            component.idle = true;
-            component.setIdleTimeout(0);
-            expect(component.idle).toBeFalse();
+        it('should toggle hidden on "Backspace"', () => {
+            pressKey('Backspace');
+            expect(component.hidden()).toBe(true);
         });
 
-        it('should always set idle back to true after the timeout', () => {
-            const ms = 1000;
-            jasmine.clock().install();
-            component.idle = true;
-            component.setIdleTimeout(ms);
-            jasmine.clock().tick(ms);
-            expect(component.idle).toBeTrue();
-            jasmine.clock().uninstall();
-        });
-    });
+        it('should toggle the overlay on "Enter" and render it', () => {
+            pressKey('Enter');
+            fixture.detectChanges();
 
-    describe('listenForKeyDown()', () => {
-        it('should call toggleAppVisibility() on key "Backspace"', () => {
-            spyOn(component, 'toggleAppVisibility').and.callThrough();
-
-            component.listenForKeyDown();
-
-            component.keyDownSubject.next('Backspace');
-
-            expect(component.toggleAppVisibility).toHaveBeenCalled();
-        });
-
-        it('should call toggleOverlayVisibility() on key "Enter"', () => {
-            spyOn(component, 'toggleOverlayVisibility').and.callThrough();
-
-            component.listenForKeyDown();
-
-            component.keyDownSubject.next('Enter');
-
-            expect(component.toggleOverlayVisibility).toHaveBeenCalled();
-        });
-    });
-
-    describe('listenForEvents()', () => {
-        const ms = 1000 * 5;
-
-        it('should call setIdleTimeout()', () => {
-            spyOn(component, 'setIdleTimeout');
-            component.listenForEvents();
-            expect(component.setIdleTimeout).toHaveBeenCalledWith(ms);
-        });
-
-        it('should call setIdleTimeout() after click event', () => {
-            const event = new Event('click');
-
-            spyOn(component, 'setIdleTimeout');
-
-            component.listenForEvents();
-            window.dispatchEvent(event);
-
-            expect(component.setIdleTimeout).toHaveBeenCalledTimes(3);
-        });
-
-        it('should call setIdleTimeout() after mousemove event', () => {
-            const event = new Event('mousemove');
-
-            spyOn(component, 'setIdleTimeout');
-
-            component.listenForEvents();
-            window.dispatchEvent(event);
-
-            expect(component.setIdleTimeout).toHaveBeenCalledTimes(3);
-        });
-
-        it('should call keyDownSubject.next() after keyboard event', () => {
-            const event = new KeyboardEvent('keydown', { key: 'Enter' });
-            spyOn(component.keyDownSubject, 'next');
-
-            component.listenForEvents();
-            window.dispatchEvent(event);
-
-            expect(component.keyDownSubject.next).toHaveBeenCalledWith('Enter');
-        });
-    });
-
-    describe('ngOnInit()', () => {
-        it('should call listenForEvents()', () => {
-            spyOn(component, 'listenForEvents').and.callThrough();
-            component.ngOnInit();
-            expect(component.listenForEvents).toHaveBeenCalled();
-        });
-
-        it('should call listenForKeyDown()', () => {
-            spyOn(component, 'listenForKeyDown').and.callThrough();
-            component.ngOnInit();
-            expect(component.listenForKeyDown).toHaveBeenCalled();
+            expect(component.overlay()).toBe(true);
+            expect(fixture.nativeElement.querySelector('.tv').classList).toContain('overlay');
         });
     });
 });

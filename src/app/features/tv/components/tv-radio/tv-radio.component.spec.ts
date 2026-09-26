@@ -1,243 +1,160 @@
-import { Component, Input } from '@angular/core';
+import { Subject } from 'rxjs';
+import { Component } from '@angular/core';
 import { TvRadioComponent } from './tv-radio.component';
-import { provideHttpClient } from '@angular/common/http';
 import { RadioService } from '@data/services/radio.service';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
 import { RadioServiceMock } from '@data/services/mocks/radio.service.mock';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-@Component({
-    selector: 'app-camera',
-    template: '',
-})
-class CameraComponent {
-    @Input() public cameraType!: 'IMG' | 'IFRAME';
-}
+@Component({ selector: 'app-tv-npmfeed', template: '' })
+class TvNpmfeedStubComponent {}
 
 describe('TvRadioComponent', () => {
     let component: TvRadioComponent;
-    let radioService: RadioService;
-    let radioServiceMock: RadioServiceMock;
     let fixture: ComponentFixture<TvRadioComponent>;
+    let radioService: RadioServiceMock;
+    let keyDownSubject: Subject<KeyboardEventKey>;
 
-    beforeEach(waitForAsync(() => {
+    beforeEach(async () => {
+        vi.useFakeTimers();
+
         TestBed.configureTestingModule({
-            imports: [TvRadioComponent, CameraComponent],
-            providers: [
-                provideHttpClient(),
-                provideHttpClientTesting(),
-                { provide: RadioService, useClass: RadioServiceMock },
-                RadioServiceMock,
-            ],
-        }).compileComponents();
-    }));
+            providers: [{ provide: RadioService, useClass: RadioServiceMock }],
+        });
+        TestBed.overrideComponent(TvRadioComponent, {
+            set: { imports: [TvNpmfeedStubComponent] },
+        });
 
-    beforeEach(() => {
+        radioService = TestBed.inject(RadioService) as unknown as RadioServiceMock;
+        vi.spyOn(radioService, 'getNowPlaying');
+
+        keyDownSubject = new Subject<KeyboardEventKey>();
         fixture = TestBed.createComponent(TvRadioComponent);
-        radioService = TestBed.inject(RadioService);
-        radioServiceMock = TestBed.inject(RadioServiceMock);
         component = fixture.componentInstance;
-        component.overlay = true;
-        spyOn(component, 'startRadio');
+        fixture.componentRef.setInput('keyDownSubject', keyDownSubject);
+        fixture.componentRef.setInput('overlay', true);
         fixture.detectChanges();
+        await fixture.whenStable();
     });
 
-    it('should create', () => {
-        expect(component).toBeTruthy();
+    afterEach(() => vi.useRealTimers());
+
+    const audio = (): HTMLAudioElement => fixture.nativeElement.querySelector('audio');
+
+    it('should start the first channel after the first render', () => {
+        expect(audio().src).toBe(radioService.radioChannels[0].file);
+        expect(audio().volume).toBe(0.5);
+        expect(audio().play).toHaveBeenCalled();
     });
 
-    describe('nowPlayingChannel()', () => {
-        it('should return the now playing channel', () => {
-            expect(component.nowPlayingChannel).toEqual(
-                component.radioService.radioChannels[component.nowPlayingChannelIndex],
-            );
-        });
+    it('should fetch what is playing on init and every 30 seconds', () => {
+        expect(radioService.getNowPlaying).toHaveBeenCalledTimes(1);
+
+        vi.advanceTimersByTime(1000 * 30);
+
+        expect(radioService.getNowPlaying).toHaveBeenCalledTimes(2);
     });
 
-    describe('nowPlayingSong()', () => {
-        it('should return the current song if KINK is playing', () => {
-            component.nowPlaying = radioServiceMock.kinkResponse;
-            expect(component.nowPlayingSong).toEqual('kink_song');
+    describe('nowPlayingSong / nowPlayingArtist', () => {
+        it('should read KINK responses', () => {
+            component.nowPlaying.set(radioService.kinkResponse);
+
+            expect(component.nowPlayingSong()).toBe('kink_song');
+            expect(component.nowPlayingArtist()).toBe('kink_artist');
         });
 
-        it('should return the current song if FLUX is playing', () => {
-            component.nowPlaying = radioServiceMock.fluxResponse;
-            expect(component.nowPlayingSong).toEqual('flux_song');
+        it('should read FLUX responses', () => {
+            component.nowPlaying.set(radioService.fluxResponse);
+
+            expect(component.nowPlayingSong()).toBe('flux_song');
+            expect(component.nowPlayingArtist()).toBe('flux_artistCredits');
         });
 
-        it('should return the current song if DNB is playing', () => {
-            component.nowPlaying = radioServiceMock.dnbResponse;
-            expect(component.nowPlayingSong).toEqual('dnb_song');
+        it('should read DNB responses', () => {
+            component.nowPlaying.set(radioService.dnbResponse);
+
+            expect(component.nowPlayingSong()).toBe('dnb_song');
+            expect(component.nowPlayingArtist()).toBe('dnb_artist');
         });
 
-        it('should return an empty string when anything else is playing', () => {
-            component.nowPlaying = undefined;
-            expect(component.nowPlayingSong).toEqual('');
-        });
-    });
+        it('should return empty strings when nothing is known', () => {
+            component.nowPlaying.set(undefined);
 
-    describe('nowPlayingArtist()', () => {
-        it('should return the current artist if KINK is playing', () => {
-            component.nowPlaying = radioServiceMock.kinkResponse;
-            expect(component.nowPlayingArtist).toEqual('kink_artist');
-        });
-
-        it('should return the current artist if FLUX is playing', () => {
-            component.nowPlaying = radioServiceMock.fluxResponse;
-            expect(component.nowPlayingArtist).toEqual('flux_artistCredits');
-        });
-
-        it('should return the current artist if DNB is playing', () => {
-            component.nowPlaying = radioServiceMock.dnbResponse;
-            expect(component.nowPlayingArtist).toEqual('dnb_artist');
-        });
-
-        it('should return an empty string when anything else is playing', () => {
-            component.nowPlaying = undefined;
-            expect(component.nowPlayingArtist).toEqual('');
-        });
-    });
-
-    describe('getNowPlaying()', () => {
-        it('should call RadioService.getNowPlaying()', () => {
-            spyOn(radioService, 'getNowPlaying').and.callThrough();
-
-            component.getNowPlaying();
-
-            expect(radioService.getNowPlaying).toHaveBeenCalled();
-        });
-
-        it('should call itself after 30 seconds', () => {
-            jasmine.clock().install();
-            spyOn(component, 'getNowPlaying').and.callThrough();
-
-            component.getNowPlaying();
-
-            jasmine.clock().tick(1000 * 30);
-
-            expect(component.getNowPlaying).toHaveBeenCalledTimes(2);
-
-            jasmine.clock().uninstall();
+            expect(component.nowPlayingSong()).toBe('');
+            expect(component.nowPlayingArtist()).toBe('');
         });
     });
 
     describe('setSelectedChannel()', () => {
         it('should set selectedChannelIndex', () => {
-            component.selectedChannelIndex = 0;
-
             component.setSelectedChannel(2);
-
-            expect(component.selectedChannelIndex).toEqual(2);
+            expect(component.selectedChannelIndex()).toBe(2);
         });
 
-        it('should do nothing when selectedChannelIndex is smaller than 0', () => {
-            component.selectedChannelIndex = 0;
-
+        it('should ignore indexes out of range', () => {
             component.setSelectedChannel(-1);
+            component.setSelectedChannel(radioService.radioChannels.length);
 
-            expect(component.selectedChannelIndex).toEqual(0);
-        });
-
-        it('should do nothing when selectedChannelIndex is bigger than radioChannels length', () => {
-            component.selectedChannelIndex = 0;
-
-            component.setSelectedChannel(5);
-
-            expect(component.selectedChannelIndex).toEqual(0);
+            expect(component.selectedChannelIndex()).toBe(0);
         });
     });
 
     describe('setNowPlayingChannel()', () => {
-        it('should call startRadio()', () => {
-            component.setNowPlayingChannel();
-
-            expect(component.startRadio).toHaveBeenCalled();
-        });
-
-        it('should call getNowPlaying()', () => {
-            spyOn(component, 'getNowPlaying');
+        it('should play the selected channel', () => {
+            component.setSelectedChannel(1);
 
             component.setNowPlayingChannel();
 
-            expect(component.getNowPlaying).toHaveBeenCalled();
-        });
-    });
-
-    describe('listenForKeyDown()', () => {
-        it('should do nothing when overlay is false', () => {
-            spyOn(component, 'setNowPlayingChannel').and.callThrough();
-
-            component.overlay = false;
-
-            component.listenForKeyDown();
-
-            component.keyDownSubject.next('Enter');
-
-            expect(component.setNowPlayingChannel).not.toHaveBeenCalled();
-        });
-
-        it('should call setNowPlayingChannel() on key "Enter"', () => {
-            spyOn(component, 'setNowPlayingChannel').and.callThrough();
-
-            component.listenForKeyDown();
-
-            component.keyDownSubject.next('Enter');
-
-            expect(component.setNowPlayingChannel).toHaveBeenCalled();
-        });
-
-        it('should call setSelectedChannel() on key "Backspace"', () => {
-            spyOn(component, 'setSelectedChannel').and.callThrough();
-
-            component.listenForKeyDown();
-
-            component.keyDownSubject.next('Backspace');
-
-            expect(component.setSelectedChannel).toHaveBeenCalledWith(
-                component.nowPlayingChannelIndex,
+            expect(component.nowPlayingChannelIndex()).toBe(1);
+            expect(audio().src).toBe(radioService.radioChannels[1].file);
+            expect(radioService.getNowPlaying).toHaveBeenLastCalledWith(
+                radioService.radioChannels[1],
             );
         });
-
-        it('should call setSelectedChannel() on key "ArrowUp"', () => {
-            const newIndex = component.selectedChannelIndex - 1;
-            spyOn(component, 'setSelectedChannel').and.callThrough();
-
-            component.listenForKeyDown();
-
-            component.keyDownSubject.next('ArrowUp');
-
-            expect(component.setSelectedChannel).toHaveBeenCalledWith(newIndex);
-        });
-
-        it('should call setSelectedChannel() on key "ArrowDown"', () => {
-            const newIndex = component.selectedChannelIndex + 1;
-
-            spyOn(component, 'setSelectedChannel').and.callThrough();
-
-            component.listenForKeyDown();
-
-            component.keyDownSubject.next('ArrowDown');
-
-            expect(component.setSelectedChannel).toHaveBeenCalledWith(newIndex);
-        });
     });
 
-    describe('ngOnInit()', () => {
-        it('should call startRadio()', () => {
-            component.ngOnInit();
-            expect(component.startRadio).toHaveBeenCalled();
+    describe('keyboard', () => {
+        it('should ignore keys when the overlay is closed', () => {
+            fixture.componentRef.setInput('overlay', false);
+            fixture.detectChanges();
+
+            keyDownSubject.next('ArrowDown');
+
+            expect(component.selectedChannelIndex()).toBe(0);
         });
 
-        it('should call getNowPlaying()', () => {
-            spyOn(component, 'getNowPlaying').and.callThrough();
-            component.ngOnInit();
-            expect(component.getNowPlaying).toHaveBeenCalled();
+        it('should move the selection with "ArrowDown" and "ArrowUp"', () => {
+            keyDownSubject.next('ArrowDown');
+            keyDownSubject.next('ArrowDown');
+            expect(component.selectedChannelIndex()).toBe(2);
+
+            keyDownSubject.next('ArrowUp');
+            expect(component.selectedChannelIndex()).toBe(1);
         });
 
-        it('should call listenForKeyDown()', () => {
-            spyOn(component, 'listenForKeyDown').and.callThrough();
-            component.ngOnInit();
-            expect(component.listenForKeyDown).toHaveBeenCalled();
+        it('should play the selected channel on "Enter"', () => {
+            keyDownSubject.next('ArrowDown');
+            keyDownSubject.next('Enter');
+
+            expect(component.nowPlayingChannelIndex()).toBe(1);
+        });
+
+        it('should reset the selection to the playing channel on "Backspace"', () => {
+            keyDownSubject.next('ArrowDown');
+            keyDownSubject.next('Backspace');
+
+            expect(component.selectedChannelIndex()).toBe(0);
+        });
+
+        it('should render the selected channel', () => {
+            keyDownSubject.next('ArrowDown');
+            fixture.detectChanges();
+
+            const items = fixture.nativeElement.querySelectorAll('.channels li');
+
+            expect(items[1].classList).toContain('selected');
+            expect(items[0].classList).not.toContain('selected');
         });
     });
 });

@@ -1,8 +1,7 @@
 import { Observable } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { HttpService } from './http.service';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { environment } from '@environments/environment';
 import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
 import { OpenMeteoForecastSerializer } from '@data/serializers/openmeteo-forecast.serializer';
 
@@ -10,8 +9,8 @@ import { OpenMeteoForecastSerializer } from '@data/serializers/openmeteo-forecas
     providedIn: 'root',
 })
 export class OpenMeteoService extends HttpService<OpenMeteoForecast> {
-    constructor(httpClient: HttpClient) {
-        super(httpClient);
+    constructor() {
+        super();
 
         this.setBaseUrl('https://api.open-meteo.com/v1');
         this.setSerializer(new OpenMeteoForecastSerializer());

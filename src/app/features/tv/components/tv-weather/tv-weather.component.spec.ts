@@ -1,208 +1,111 @@
-import { provideHttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
 import { TvWeatherComponent } from './tv-weather.component';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { OpenWeatherService } from '@data/services/openmeteo.service';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { OpenWeatherServiceMock } from '@data/services/mocks/openweather.service.mock';
+import { OpenMeteoService } from '@data/services/openmeteo.service';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
+import { OpenMeteoAirQuality } from '@data/models/openmeteo-airquality.model';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { OpenMeteoForecastDaily } from '@data/models/openmeteo-forecast-daily.model';
+import { OpenMeteoForecastCurrent } from '@data/models/openmeteo-forecast-current.model';
+import { OpenMeteoAirqualityService } from '@data/services/openmeteo-airquality.service';
+import { OpenMeteoAirQualityCurrent } from '@data/models/openmeteo-airquality-current.model';
 
 describe('TvWeatherComponent', () => {
     let component: TvWeatherComponent;
     let fixture: ComponentFixture<TvWeatherComponent>;
-    let openWeatherService: OpenWeatherService;
 
-    beforeEach(waitForAsync(() => {
-        TestBed.configureTestingModule({
-            imports: [TvWeatherComponent],
-            providers: [
-                provideHttpClient(),
-                provideHttpClientTesting(),
-                {
-                    provide: OpenWeatherService,
-                    useClass: OpenWeatherServiceMock,
-                },
-            ],
-        }).compileComponents();
-    }));
+    const forecast = new OpenMeteoForecast(
+        new OpenMeteoForecastCurrent('2026-03-01T12:00', 900, 12.4, 5, 180, 1, 2),
+        new OpenMeteoForecastDaily(
+            ['2026-03-01T07:00', '2026-03-02T06:58'],
+            ['2026-03-01T18:30', '2026-03-02T18:32'],
+        ),
+    );
 
-    beforeEach(() => {
+    // birch 25 → 4/10, mugwort 100 → above the highest threshold → 10/10
+    const airQuality = new OpenMeteoAirQuality(
+        new OpenMeteoAirQualityCurrent('2026-03-01T12:00', 3600, 0, 25, 0, 100, 0, 0),
+    );
+
+    const getForecast = vi.fn(() => of(forecast));
+    const getAirQuality = vi.fn(() => of(airQuality));
+
+    const createComponent = (now: Date): void => {
+        vi.setSystemTime(now);
         fixture = TestBed.createComponent(TvWeatherComponent);
-        openWeatherService = TestBed.inject(OpenWeatherService);
         component = fixture.componentInstance;
         fixture.detectChanges();
-    });
+    };
 
-    it('should create', () => {
-        expect(component).toBeTruthy();
-    });
+    beforeEach(() => {
+        vi.useFakeTimers();
+        getForecast.mockClear();
+        getAirQuality.mockClear();
 
-    describe('icon()', () => {
-        it('should return current icon', () => {
-            expect(component.icon).toEqual('http://openweathermap.org/img/wn/02d@2x.png');
-        });
-
-        it('should return empty string is weather is undefined', () => {
-            component.weather = undefined;
-            expect(component.icon).toEqual('');
+        TestBed.configureTestingModule({
+            providers: [
+                { provide: OpenMeteoService, useValue: { getForecast } },
+                { provide: OpenMeteoAirqualityService, useValue: { getAirQuality } },
+            ],
         });
     });
 
-    describe('temperature()', () => {
-        it('should return current temperature in °C', () => {
-            expect(component.temperature).toEqual('4°C');
-        });
+    afterEach(() => vi.useRealTimers());
 
-        it('should return fallback in °C if weather is undefined', () => {
-            component.weather = undefined;
-            expect(component.temperature).toEqual('0°C');
-        });
+    it('should fetch the weather on init and every 5 minutes', () => {
+        createComponent(new Date(2026, 2, 1, 12));
+        expect(getForecast).toHaveBeenCalledTimes(1);
+        expect(getAirQuality).toHaveBeenCalledTimes(1);
+
+        vi.advanceTimersByTime(1000 * 60 * 5);
+
+        expect(getForecast).toHaveBeenCalledTimes(2);
+        expect(getAirQuality).toHaveBeenCalledTimes(2);
     });
 
-    describe('wind()', () => {
-        it('should return current wind in km/u', () => {
-            expect(component.wind).toEqual('12 km/u');
-        });
+    it('should return the weather icon for the current weather code', () => {
+        createComponent(new Date(2026, 2, 1, 12));
 
-        it('should return fallback in km/u if weather is undefined', () => {
-            component.weather = undefined;
-            expect(component.wind).toEqual('0 km/u');
-        });
+        expect(component.weatherIcon()).toBe('http://openweathermap.org/img/wn/02d@2x.png');
     });
 
-    describe('rotation()', () => {
-        it('should return current rotation in deg', () => {
-            expect(component.rotation).toEqual('rotate(13deg)');
+    describe('pollenGroupScore()', () => {
+        it('should return the highest score within a group', () => {
+            createComponent(new Date(2026, 2, 1, 12));
+
+            expect(component.pollenGroupScore('tree')).toBe(4);
+            expect(component.pollenGroupScore('grass')).toBe(0);
+            expect(component.pollenGroupScore('weed')).toBe(10);
         });
 
-        it('should return fallback in deg if weather is undefined', () => {
-            component.weather = undefined;
-            expect(component.rotation).toEqual('rotate(0deg)');
-        });
-    });
+        it('should only render groups with a score', () => {
+            createComponent(new Date(2026, 2, 1, 12));
+            fixture.detectChanges();
 
-    describe('humidity()', () => {
-        it('should return current humidity in percentage', () => {
-            expect(component.humidity).toEqual('7%');
-        });
+            const alts = Array.from(
+                fixture.nativeElement.querySelectorAll('img') as NodeListOf<HTMLImageElement>,
+            ).map((img) => img.alt);
 
-        it('should return fallback in percentage if weather is undefined', () => {
-            component.weather = undefined;
-            expect(component.humidity).toEqual('0%');
+            expect(alts).toContain('tree pollen icon');
+            expect(alts).toContain('weed pollen icon');
+            expect(alts).not.toContain('grass pollen icon');
         });
     });
 
     describe('setSun()', () => {
-        it('should call itself if weather is undefined', () => {
-            jasmine.clock().install();
-
-            spyOn(component, 'setSun').and.callThrough();
-            component.weather = undefined;
-
-            component.setSun();
-
-            jasmine.clock().tick(0);
-
-            expect(component.setSun).toHaveBeenCalledTimes(2);
-
-            jasmine.clock().uninstall();
+        it("should show today's sunrise before sunrise", () => {
+            createComponent(new Date(2026, 2, 1, 6));
+            expect(component.sun()).toEqual({ type: 'sunrise', time: '07:00' });
         });
 
-        it('should set the sun variable to todays sunrise if sunrise has yet to come', () => {
-            const now = new Date();
-            const time = now.toLocaleString('nl-NL', {
-                hour: '2-digit',
-                minute: '2-digit',
-            });
-
-            component.weather!.daily[0].sunrise = now.getTime() / 1000;
-
-            component.setSun();
-
-            expect(component.sun).toEqual({
-                time,
-                type: 'sunrise',
-            });
+        it("should show today's sunset between sunrise and sunset", () => {
+            createComponent(new Date(2026, 2, 1, 12));
+            expect(component.sun()).toEqual({ type: 'sunset', time: '18:30' });
         });
 
-        it('should set the sun variable to todays sunset if todays sunrise has passed', () => {
-            const now = new Date();
-            const time = now.toLocaleString('nl-NL', {
-                hour: '2-digit',
-                minute: '2-digit',
-            });
-
-            component.weather!.daily[0].sunrise = (now.getTime() - 1000) / 1000;
-            component.weather!.daily[0].sunset = now.getTime() / 1000;
-
-            component.setSun();
-
-            expect(component.sun).toEqual({
-                time,
-                type: 'sunset',
-            });
-        });
-
-        it('should set the sun variable to tomorrows sunrise if todays sunrise and sunset have passed', () => {
-            const now = new Date();
-            const time = now.toLocaleString('nl-NL', {
-                hour: '2-digit',
-                minute: '2-digit',
-            });
-
-            component.weather!.daily[1].sunset = now.getTime() / 1000;
-            component.weather!.daily[0].sunrise = (now.getTime() - 1000) / 1000;
-            component.weather!.daily[0].sunset = (now.getTime() - 1000) / 1000;
-
-            component.setSun();
-
-            expect(component.sun).toEqual({
-                time,
-                type: 'sunrise',
-            });
-        });
-
-        it('should call itself after 1 minute', () => {
-            jasmine.clock().install();
-
-            spyOn(component, 'setSun').and.callThrough();
-
-            component.setSun();
-
-            jasmine.clock().tick(1000 * 60);
-
-            expect(component.setSun).toHaveBeenCalledTimes(2);
-
-            jasmine.clock().uninstall();
-        });
-    });
-
-    describe('getWeather()', () => {
-        it('should call openWeatherService.getWeather()', () => {
-            spyOn(openWeatherService, 'getWeather').and.callThrough();
-
-            component.getWeather();
-
-            expect(openWeatherService.getWeather).toHaveBeenCalled();
-        });
-
-        it('should call itself after 5 minutes', () => {
-            jasmine.clock().install();
-            spyOn(component, 'getWeather').and.callThrough();
-
-            component.getWeather();
-
-            jasmine.clock().tick(1000 * 60 * 5);
-
-            expect(component.getWeather).toHaveBeenCalledTimes(2);
-
-            jasmine.clock().uninstall();
-        });
-    });
-
-    describe('ngOnInit()', () => {
-        it('should call getWeather()', () => {
-            spyOn(component, 'getWeather').and.callThrough();
-            component.ngOnInit();
-            expect(component.getWeather).toHaveBeenCalled();
+        it("should show tomorrow's sunrise after sunset", () => {
+            createComponent(new Date(2026, 2, 1, 20));
+            expect(component.sun()).toEqual({ type: 'sunrise', time: '06:58' });
         });
     });
 });

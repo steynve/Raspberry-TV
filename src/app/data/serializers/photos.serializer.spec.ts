@@ -1,33 +1,18 @@
-import { TestBed } from '@angular/core/testing';
+import { firstValueFrom } from 'rxjs';
 import { Photos } from '../models/photos.model';
+import { describe, expect, it } from 'vitest';
 import { PhotosSerializer } from './photos.serializer';
 import { PexelsServiceMock } from '../services/mocks/pexels.service.mock';
 
 describe('PhotosSerializer', () => {
-    let serializer: PhotosSerializer;
-    const mock = new PexelsServiceMock();
+    const serializer = new PhotosSerializer();
 
-    beforeEach(() => {
-        TestBed.configureTestingModule({
-            providers: [PhotosSerializer],
-        });
+    it('should serialize from json to model and back', async () => {
+        const photos = await firstValueFrom(new PexelsServiceMock().getPhotos());
+        const json = serializer.toJson(photos);
+        const result = serializer.fromJson(json as Photos);
 
-        serializer = TestBed.inject(PhotosSerializer);
-    });
-
-    it('should be created', () => {
-        expect(serializer).toBeTruthy();
-    });
-
-    it('should serialize from json to model', () => {
-        mock.getPhotos().subscribe((data: Photos) => {
-            expect(serializer.fromJson(data)).toEqual(data);
-        });
-    });
-
-    it('should serialize from model to json', () => {
-        mock.getPhotos().subscribe((data: Photos) => {
-            expect(typeof serializer.toJson(data)).toBe('object');
-        });
+        expect(result).toBeInstanceOf(Photos);
+        expect(result).toEqual(photos);
     });
 });

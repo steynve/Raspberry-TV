@@ -1,33 +1,34 @@
-import { TestBed } from '@angular/core/testing';
-import { OpenWeather } from '../models/openmeteo-forecast.model';
-import { OpenWeatherSerializer } from './openmeteo-forecast.serializer';
-import { OpenWeatherServiceMock } from '../services/mocks/openweather.service.mock';
+import { describe, expect, it } from 'vitest';
+import { OpenMeteoForecast } from '../models/openmeteo-forecast.model';
+import { OpenMeteoForecastSerializer } from './openmeteo-forecast.serializer';
 
-describe('OpenWeatherSerializer', () => {
-    let serializer: OpenWeatherSerializer;
-    const mock = new OpenWeatherServiceMock();
+describe('OpenMeteoForecastSerializer', () => {
+    const serializer = new OpenMeteoForecastSerializer();
+    const json = {
+        current_weather: { temperature: 12.4, weathercode: 2, is_day: 1 },
+        daily: {
+            sunrise: ['2026-03-01T07:00', '2026-03-02T06:58'],
+            sunset: ['2026-03-01T18:30', '2026-03-02T18:32'],
+        },
+    } as unknown as OpenMeteoForecast;
 
-    beforeEach(() => {
-        TestBed.configureTestingModule({
-            providers: [OpenWeatherSerializer],
-        });
+    it('should serialize from json to model and derive the sun times', () => {
+        const result = serializer.fromJson(json);
 
-        serializer = TestBed.inject(OpenWeatherSerializer);
-    });
-
-    it('should be created', () => {
-        expect(serializer).toBeTruthy();
-    });
-
-    it('should serialize from json to model', () => {
-        mock.getWeather().subscribe((data: OpenWeather) => {
-            expect(serializer.fromJson(data)).toEqual(data);
-        });
+        expect(result).toBeInstanceOf(OpenMeteoForecast);
+        expect(result.current_weather).toEqual(json.current_weather);
+        expect(result.daily.sunriseToday).toBe('07:00');
+        expect(result.daily.sunsetToday).toBe('18:30');
+        expect(result.daily.sunriseTomorrow).toBe('06:58');
+        expect(result.daily.sunriseTodayTimestamp).toBe(new Date('2026-03-01T07:00').getTime());
     });
 
     it('should serialize from model to json', () => {
-        mock.getWeather().subscribe((data: OpenWeather) => {
-            expect(typeof serializer.toJson(data)).toBe('object');
+        const result = serializer.toJson(serializer.fromJson(json));
+
+        expect(result).toEqual({
+            current_weather: json.current_weather,
+            daily: expect.objectContaining(json.daily),
         });
     });
 });

@@ -1,13 +1,16 @@
-import { Observable } from 'rxjs';
 import { RadioService } from './radio.service';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { RadioChannel } from '../models/radio-channel.model';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 describe('RadioService', () => {
     let service: RadioService;
     let httpMock: HttpTestingController;
+
+    const channel = (apiSrc: RadioChannel['apiSrc']): RadioChannel =>
+        service.radioChannels.find((radioChannel) => radioChannel.apiSrc === apiSrc)!;
 
     beforeEach(() => {
         TestBed.configureTestingModule({
@@ -18,83 +21,35 @@ describe('RadioService', () => {
         httpMock = TestBed.inject(HttpTestingController);
     });
 
-    afterEach(() => {
-        httpMock.verify();
+    afterEach(() => httpMock.verify());
+
+    it('should request KINK now playing', () => {
+        service.getNowPlaying(channel('KINK')).subscribe();
+
+        httpMock.expectOne('https://api.kink.nl/static/now-playing.json').flush({});
     });
 
-    it('should be created', () => {
-        expect(service).toBeTruthy();
+    it('should request FLUX now playing for the channel', () => {
+        const flux = channel('FLUX');
+
+        service.getNowPlaying(flux).subscribe();
+
+        httpMock
+            .expectOne(`https://fluxmusic.api.radiosphere.io/channels/${flux.apiRef}/current-track`)
+            .flush({});
     });
 
-    describe('getNowPlaying()', () => {
-        it('should return an observable', () => {
-            const radioChannel = service.radioChannels.find(
-                (channel) => channel.apiSrc === 'NONE',
-            ) as unknown as RadioChannel;
+    it('should request DNB now playing', () => {
+        service.getNowPlaying(channel('DNB')).subscribe();
 
-            expect(service.getNowPlaying(radioChannel)).toEqual(new Observable());
-        });
+        httpMock.expectOne('https://api.dnbradio.nl/now_playing').flush({});
     });
 
-    describe('getNowPlayingKink()', () => {
-        it('should make a GET request via the abstract http class', () => {
-            const abstractMethod = spyOn(service, 'read').and.callThrough();
+    it('should not request anything for channels without an API', () => {
+        const next = vi.fn();
 
-            const radioChannel = service.radioChannels.find(
-                (channel) => channel.apiSrc === 'KINK',
-            ) as unknown as RadioChannel;
+        service.getNowPlaying(channel('NONE')).subscribe(next);
 
-            service.getNowPlaying(radioChannel).subscribe(() => {
-                expect(abstractMethod).toHaveBeenCalled();
-            });
-
-            const request = httpMock.expectOne('https://api.kink.nl/static/now-playing.json');
-
-            expect(request.request.method).toBe('GET');
-
-            request.flush([]);
-        });
-    });
-
-    describe('getNowPlayingFlux()', () => {
-        it('should make a GET request via the abstract http class', () => {
-            const abstractMethod = spyOn(service, 'read').and.callThrough();
-
-            const radioChannel = service.radioChannels.find(
-                (channel) => channel.apiSrc === 'FLUX',
-            ) as unknown as RadioChannel;
-
-            service.getNowPlaying(radioChannel).subscribe(() => {
-                expect(abstractMethod).toHaveBeenCalled();
-            });
-
-            const request = httpMock.expectOne(
-                'https://fluxmusic.api.radiosphere.io/channels/4885aa15-eecb-49ed-9958-106ce4c95191/current-track',
-            );
-
-            expect(request.request.method).toBe('GET');
-
-            request.flush([]);
-        });
-    });
-
-    describe('getNowPlayingDNB()', () => {
-        it('should make a GET request via the abstract http class', () => {
-            const abstractMethod = spyOn(service, 'read').and.callThrough();
-
-            const radioChannel = service.radioChannels.find(
-                (channel) => channel.apiSrc === 'DNB',
-            ) as unknown as RadioChannel;
-
-            service.getNowPlaying(radioChannel).subscribe(() => {
-                expect(abstractMethod).toHaveBeenCalled();
-            });
-
-            const request = httpMock.expectOne('https://api.dnbradio.nl/now_playing');
-
-            expect(request.request.method).toBe('GET');
-
-            request.flush([]);
-        });
+        expect(next).not.toHaveBeenCalled();
     });
 });

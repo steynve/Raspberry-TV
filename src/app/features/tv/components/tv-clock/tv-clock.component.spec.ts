@@ -1,57 +1,34 @@
 import { TvClockComponent } from './tv-clock.component';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('TvClockComponent', () => {
     let component: TvClockComponent;
     let fixture: ComponentFixture<TvClockComponent>;
 
-    beforeEach(waitForAsync(() => {
-        TestBed.configureTestingModule({
-            imports: [TvClockComponent],
-        }).compileComponents();
-    }));
-
     beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 2, 1, 13, 37));
+
         fixture = TestBed.createComponent(TvClockComponent);
         component = fixture.componentInstance;
         fixture.detectChanges();
     });
 
-    it('should create', () => {
-        expect(component).toBeTruthy();
+    afterEach(() => vi.useRealTimers());
+
+    it('should set the date and time on init', () => {
+        expect(component.date()).not.toEqual('');
+        expect(component.time()).toEqual('13:37');
     });
 
-    describe('getDateTime()', () => {
-        it('should set the date & time variables', () => {
-            component.date = '';
-            component.time = '';
+    it('should update the time every second', () => {
+        vi.advanceTimersByTime(1000 * 60);
 
-            component.getDateTime();
-
-            expect(component.date).not.toEqual('');
-            expect(component.time).not.toEqual('');
-        });
-
-        it('should call itself after 100 milliseconds', () => {
-            jasmine.clock().install();
-
-            spyOn(component, 'getDateTime').and.callThrough();
-
-            component.getDateTime();
-
-            jasmine.clock().tick(100);
-
-            expect(component.getDateTime).toHaveBeenCalledTimes(2);
-
-            jasmine.clock().uninstall();
-        });
+        expect(component.time()).toEqual('13:38');
     });
 
-    describe('ngOnInit()', () => {
-        it('should call getDateTime()', () => {
-            spyOn(component, 'getDateTime').and.callThrough();
-            component.ngOnInit();
-            expect(component.getDateTime).toHaveBeenCalled();
-        });
+    it('should render the date and time', () => {
+        expect(fixture.nativeElement.querySelector('time').textContent).toContain('13:37');
     });
 });

@@ -1,17 +1,23 @@
+import { Component } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { AppComponent } from './app.component';
-import { RouterModule } from '@angular/router';
-import { TestBed, waitForAsync } from '@angular/core/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+@Component({
+    selector: 'app-tv',
+    template: '',
+})
+class TvStubComponent {}
 
 describe('AppComponent', () => {
-    beforeEach(waitForAsync(() => {
-        TestBed.configureTestingModule({
-            imports: [RouterModule, AppComponent],
-        }).compileComponents();
-    }));
+    beforeEach(() => {
+        TestBed.overrideComponent(AppComponent, { set: { imports: [TvStubComponent] } });
+    });
 
-    it('should create the app', () => {
+    it('should render the tv', () => {
         const fixture = TestBed.createComponent(AppComponent);
-        const app = fixture.componentInstance;
-        expect(app).toBeTruthy();
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('app-tv')).toBeTruthy();
     });
 });

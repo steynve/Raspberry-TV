@@ -2,16 +2,16 @@ import { Observable } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { HttpService } from './http.service';
 import { Photos } from '../models/photos.model';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { HttpHeaders } from '@angular/common/http';
+import { environment } from '@environments/environment';
 import { PhotosSerializer } from '../serializers/photos.serializer';
 
 @Injectable({
     providedIn: 'root',
 })
 export class PexelsService extends HttpService<Photos> {
-    constructor(httpClient: HttpClient) {
-        super(httpClient);
+    constructor() {
+        super();
 
         const headers = {
             Authorization: environment.pexels_api_key,

@@ -1,33 +1,21 @@
-import { TestBed } from '@angular/core/testing';
-import { OpenWeather } from '../models/openmeteo-forecast.model';
-import { OpenWeatherSerializer } from './openmeteo-forecast.serializer';
-import { OpenWeatherServiceMock } from '../services/mocks/openweather.service.mock';
+import { describe, expect, it } from 'vitest';
+import { OpenMeteoAirQuality } from '../models/openmeteo-airquality.model';
+import { OpenMeteoAirqualitySerializer } from './openmeteo-airquality.serializer';
 
-describe('OpenWeatherSerializer', () => {
-    let serializer: OpenWeatherSerializer;
-    const mock = new OpenWeatherServiceMock();
-
-    beforeEach(() => {
-        TestBed.configureTestingModule({
-            providers: [OpenWeatherSerializer],
-        });
-
-        serializer = TestBed.inject(OpenWeatherSerializer);
-    });
-
-    it('should be created', () => {
-        expect(serializer).toBeTruthy();
-    });
+describe('OpenMeteoAirqualitySerializer', () => {
+    const serializer = new OpenMeteoAirqualitySerializer();
+    const json = {
+        current: { birch_pollen: 25, grass_pollen: 3 },
+    } as unknown as OpenMeteoAirQuality;
 
     it('should serialize from json to model', () => {
-        mock.getWeather().subscribe((data: OpenWeather) => {
-            expect(serializer.fromJson(data)).toEqual(data);
-        });
+        const result = serializer.fromJson(json);
+
+        expect(result).toBeInstanceOf(OpenMeteoAirQuality);
+        expect(result.current).toEqual(json.current);
     });
 
     it('should serialize from model to json', () => {
-        mock.getWeather().subscribe((data: OpenWeather) => {
-            expect(typeof serializer.toJson(data)).toBe('object');
-        });
+        expect(serializer.toJson(serializer.fromJson(json))).toEqual(json);
     });
 });

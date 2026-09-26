@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { OpenMeteoService } from './openmeteo.service';
 import { provideHttpClient } from '@angular/common/http';
 import { environment } from '@environments/environment';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { OpenMeteoAirqualityService } from './openmeteo-airquality.service';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
-describe('OpenMeteoService', () => {
-    let service: OpenMeteoService;
+describe('OpenMeteoAirqualityService', () => {
+    let service: OpenMeteoAirqualityService;
     let httpMock: HttpTestingController;
 
     beforeEach(() => {
@@ -14,29 +14,23 @@ describe('OpenMeteoService', () => {
             providers: [provideHttpClient(), provideHttpClientTesting()],
         });
 
-        service = TestBed.inject(OpenMeteoService);
+        service = TestBed.inject(OpenMeteoAirqualityService);
         httpMock = TestBed.inject(HttpTestingController);
     });
 
     afterEach(() => httpMock.verify());
 
-    it('should request the forecast for the configured location', () => {
-        service.getForecast().subscribe();
+    it('should request the current pollen levels for the configured location', () => {
+        service.getAirQuality().subscribe();
 
         const request = httpMock.expectOne(
-            (req) => req.url === 'https://api.open-meteo.com/v1/forecast',
+            (req) => req.url === 'https://air-quality-api.open-meteo.com/v1/air-quality',
         );
 
         expect(request.request.params.get('latitude')).toBe(environment.open_meteo_lat);
         expect(request.request.params.get('longitude')).toBe(environment.open_meteo_lon);
-        expect(request.request.params.get('daily')).toBe('sunrise,sunset');
+        expect(request.request.params.get('current')).toContain('birch_pollen');
 
-        request.flush({
-            current_weather: {},
-            daily: {
-                sunrise: ['2026-03-01T07:00', '2026-03-02T06:58'],
-                sunset: ['2026-03-01T18:30'],
-            },
-        });
+        request.flush({ current: {} });
     });
 });

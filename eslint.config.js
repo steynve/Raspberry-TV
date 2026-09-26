@@ -1,39 +1,41 @@
-import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import angulareslint from 'angular-eslint';
-import prettierRecommended from 'eslint-plugin-prettier/recommended';
+// @ts-check
+const eslint = require('@eslint/js');
+const tseslint = require('typescript-eslint');
+const angular = require('angular-eslint');
+const eslintPluginPrettierRecommended = require('eslint-plugin-prettier/recommended');
 
-export default tseslint.config(
+module.exports = tseslint.config(
     {
         files: ['**/*.ts'],
         languageOptions: {
             parserOptions: {
-                project: 'tsconfig.json',
-                tsconfigRootDir: './',
+                projectService: true,
+                tsconfigRootDir: __dirname,
             },
         },
         extends: [
             eslint.configs.recommended,
-            angulareslint.configs.tsRecommended,
-            tseslint.configs.recommended,
-            prettierRecommended,
+            ...tseslint.configs.recommended,
+            ...tseslint.configs.stylistic,
+            ...angular.configs.tsRecommended,
+            eslintPluginPrettierRecommended,
         ],
-        processor: angulareslint.processInlineTemplates,
+        processor: angular.processInlineTemplates,
         rules: {
-            '@angular-eslint/component-selector': [
-                'error',
-                {
-                    type: 'element',
-                    prefix: 'app',
-                    style: 'kebab-case',
-                },
-            ],
             '@angular-eslint/directive-selector': [
                 'error',
                 {
                     type: 'attribute',
                     prefix: 'app',
                     style: 'camelCase',
+                },
+            ],
+            '@angular-eslint/component-selector': [
+                'error',
+                {
+                    type: 'element',
+                    prefix: 'app',
+                    style: 'kebab-case',
                 },
             ],
             'max-len': [
@@ -63,9 +65,6 @@ export default tseslint.config(
     },
     {
         files: ['**/*.html'],
-        extends: [
-            ...angulareslint.configs.templateRecommended,
-            ...angulareslint.configs.templateAccessibility,
-        ],
+        extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
     },
 );
