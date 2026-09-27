@@ -4,7 +4,8 @@ import { Kink } from '@data/models/kink.model';
 import { Flux } from '@data/models/flux.model';
 import { RadioService } from '@data/services/radio.service';
 import { PowerStore } from '@data/stores/power.store';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SpotifyStore } from '@data/stores/spotify.store';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
 import { IconComponent } from '@shared/components/icon/icon.component';
 import { formatTime } from '@data/utils/time';
@@ -45,6 +46,7 @@ export class TvRadioComponent implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
     private readonly radioService = inject(RadioService);
     private readonly power = inject(PowerStore);
+    private readonly spotify = inject(SpotifyStore);
     private readonly radioElement =
         viewChild.required<ElementRef<HTMLAudioElement>>('radioElement');
 
@@ -65,7 +67,23 @@ export class TvRadioComponent implements OnInit {
         () => this.radioChannels[this.nowPlayingChannelIndex()],
     );
 
+    public readonly spotifyChannelIndex = this.radioChannels.findIndex(
+        (channel) => channel.apiSrc === 'SPOTIFY',
+    );
+
+    public readonly isSpotify = computed(() => this.nowPlayingChannel().apiSrc === 'SPOTIFY');
+
+    // The playing indicator: the stream on this page, or Spotify on the Pi
+    public readonly isPlaying = computed(() =>
+        this.isSpotify() ? !!this.spotify.state()?.playing : this.playing(),
+    );
+
     public readonly nowPlayingSong = computed(() => {
+        if (this.isSpotify()) {
+            const state = this.spotify.state();
+            return state?.active ? state.title : '';
+        }
+
         const nowPlaying = this.nowPlaying();
 
         if (nowPlaying instanceof Kink) {
@@ -84,6 +102,11 @@ export class TvRadioComponent implements OnInit {
     });
 
     public readonly nowPlayingArtist = computed(() => {
+        if (this.isSpotify()) {
+            const state = this.spotify.state();
+            return state?.active ? state.artist : '';
+        }
+
         const nowPlaying = this.nowPlaying();
 
         if (nowPlaying instanceof Kink) {
@@ -109,9 +132,29 @@ export class TvRadioComponent implements OnInit {
         this.power.awake$
             .pipe(distinctUntilChanged(), skip(1), takeUntilDestroyed())
             .subscribe((awake) => (awake ? this.startRadio() : this.stopRadio()));
+
+        // Casting from the Spotify app takes over from the radio, like switching to a channel
+        toObservable(this.spotify.state)
+            .pipe(takeUntilDestroyed())
+            .subscribe((state) => {
+                if (state?.playing && !this.isSpotify()) {
+                    this.nowPlaying.set(undefined);
+                    this.nowPlayingChannelIndex.set(this.spotifyChannelIndex);
+                    this.selectedChannelIndex.set(this.spotifyChannelIndex);
+                    this.stopRadio();
+                }
+
+                this.recordSong();
+            });
     }
 
     public startRadio(): void {
+        // Spotify plays on the Pi itself, the phone decides what
+        if (this.isSpotify()) {
+            this.stopRadio();
+            return;
+        }
+
         const radio = this.radioElement().nativeElement;
 
         radio.src = this.nowPlayingChannel().file;
@@ -187,6 +230,12 @@ export class TvRadioComponent implements OnInit {
     public setNowPlayingChannel(): void {
         this.nowPlaying.set(undefined);
         this.nowPlayingChannelIndex.set(this.selectedChannelIndex());
+
+        // A radio station takes over from Spotify, so they never play at the same time
+        if (!this.isSpotify() && this.spotify.state()?.playing) {
+            this.spotify.pause();
+        }
+
         this.startRadio();
         this.getNowPlaying();
     }

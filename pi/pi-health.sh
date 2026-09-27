@@ -1,8 +1,8 @@
 #!/bin/bash
-# Writes the Pi's health to the web root, where the TV app reads it every minute.
+# Writes the Pi's health to /run/raspberry (RAM, served as /live/), where the TV app reads it every minute.
 # setup.sh installs it as /usr/local/bin/raspberry-health, run every minute from /etc/cron.d:
 #   * * * * * root /usr/local/bin/raspberry-health
-TARGET=/var/www/html/health.json
+TARGET=/run/raspberry/health.json
 
 temperature=$(awk '{ printf "%.1f", $1 / 1000 }' /sys/class/thermal/thermal_zone0/temp)
 uptime=$(cut -d. -f1 /proc/uptime)

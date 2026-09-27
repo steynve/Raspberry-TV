@@ -38,6 +38,7 @@ export class RadioServiceMock {
         ),
         new RadioChannel('http://website.com/api/dnb.mp3', 'DNB', 'DNB', ''),
         new RadioChannel('http://website.com/api/none.mp3', 'NONE', 'NONE', ''),
+        new RadioChannel('', 'Spotify', 'SPOTIFY', ''),
     ];
 
     public getNowPlaying(radioChannel: RadioChannel): Observable<Kink | Flux | DNB> {

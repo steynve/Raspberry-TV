@@ -16,7 +16,7 @@
             [song]="nowPlaying?.nowPlayingSong() ?? ''"
             [artist]="nowPlaying?.nowPlayingArtist() ?? ''"
             [station]="nowPlaying?.nowPlayingChannel().visibleName ?? ''"
-            [playing]="nowPlaying?.playing() ?? false"
+            [playing]="nowPlaying?.isPlaying() ?? false"
         />
     </main>
 </app-tv-wallpaper>

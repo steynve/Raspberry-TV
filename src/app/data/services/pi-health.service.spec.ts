@@ -20,11 +20,11 @@ describe('PiHealthService', () => {
 
     afterEach(() => httpMock.verify());
 
-    it('should fetch health.json from the Pi itself, bypassing the browser cache', () => {
+    it('should fetch the live health.json from the Pi itself, bypassing the browser cache', () => {
         let result: PiHealth | undefined;
         service.getHealth().subscribe((health) => (result = health));
 
-        const request = httpMock.expectOne((req) => req.url === '/health.json');
+        const request = httpMock.expectOne((req) => req.url === '/live/health.json');
         expect(request.request.params.get('t')).toMatch(/^\d+$/);
 
         request.flush({ ...piHealthMock() });

@@ -1,10 +1,12 @@
 import { Subject } from 'rxjs';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { Kink } from '@data/models/kink.model';
 import { TvRadioComponent } from './tv-radio.component';
 import { TvSystemComponent } from '../tv-system/tv-system.component';
 import { RadioService } from '@data/services/radio.service';
 import { PowerStore } from '@data/stores/power.store';
+import { SpotifyStore } from '@data/stores/spotify.store';
+import { SpotifyState } from '@data/models/spotify-state.model';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
 import { RadioServiceMock } from '@data/services/mocks/radio.service.mock';
@@ -18,12 +20,23 @@ describe('TvRadioComponent', () => {
     let fixture: ComponentFixture<TvRadioComponent>;
     let radioService: RadioServiceMock;
     let keyDownSubject: Subject<KeyboardEventKey>;
+    let spotify: {
+        state: ReturnType<typeof signal<SpotifyState | undefined>>;
+        pause: ReturnType<typeof vi.fn>;
+    };
+
+    const spotifyPlaying = (playing = true): SpotifyState =>
+        new SpotifyState(0, true, playing, 'Everlong', 'Foo Fighters', 'The Colour and the Shape');
 
     beforeEach(async () => {
         vi.useFakeTimers();
+        spotify = { state: signal<SpotifyState | undefined>(undefined), pause: vi.fn() };
 
         TestBed.configureTestingModule({
-            providers: [{ provide: RadioService, useClass: RadioServiceMock }],
+            providers: [
+                { provide: RadioService, useClass: RadioServiceMock },
+                { provide: SpotifyStore, useFactory: (): typeof spotify => spotify },
+            ],
         });
         TestBed.overrideComponent(TvRadioComponent, {
             remove: { imports: [TvSystemComponent] },
@@ -56,6 +69,71 @@ describe('TvRadioComponent', () => {
         expect(audio().src).toBe(radioService.radioChannels[0].file);
         expect(audio().volume).toBe(0.5);
         expect(audio().play).toHaveBeenCalled();
+    });
+
+    describe('Spotify', () => {
+        const spotifyIndex = (): number => radioService.radioChannels.length - 1;
+
+        it('should be the last channel', () => {
+            expect(component.spotifyChannelIndex).toBe(spotifyIndex());
+            expect(radioService.radioChannels[spotifyIndex()].apiSrc).toBe('SPOTIFY');
+        });
+
+        it('should take over from the radio when the phone starts playing', () => {
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+
+            expect(component.isSpotify()).toBe(true);
+            expect(component.selectedChannelIndex()).toBe(spotifyIndex());
+            expect(audio().hasAttribute('src')).toBe(false);
+            expect(component.nowPlayingSong()).toBe('Everlong');
+            expect(component.nowPlayingArtist()).toBe('Foo Fighters');
+            expect(component.isPlaying()).toBe(true);
+            expect(fixture.nativeElement.querySelector('.song').textContent).toBe('Everlong');
+        });
+
+        it('should show when Spotify is paused on the phone', () => {
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+            spotify.state.set(spotifyPlaying(false));
+            fixture.detectChanges();
+
+            expect(component.isSpotify()).toBe(true);
+            expect(component.isPlaying()).toBe(false);
+        });
+
+        it('should pause Spotify when a radio station is picked', () => {
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+
+            component.setSelectedChannel(0);
+            component.setNowPlayingChannel();
+
+            expect(spotify.pause).toHaveBeenCalled();
+            expect(audio().src).toBe(radioService.radioChannels[0].file);
+        });
+
+        it('should explain how to cast when Spotify is picked without anything playing', () => {
+            component.setSelectedChannel(spotifyIndex());
+            component.setNowPlayingChannel();
+            fixture.detectChanges();
+
+            expect(audio().hasAttribute('src')).toBe(false);
+            expect(fixture.nativeElement.querySelector('.hint').textContent).toContain(
+                'pick Raspberry',
+            );
+        });
+
+        it('should add Spotify songs to the history', () => {
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+            spotify.state.set(new SpotifyState(0, true, true, 'Monkey Wrench', 'Foo Fighters', ''));
+            fixture.detectChanges();
+
+            expect(component.history()[0]).toEqual(
+                expect.objectContaining({ song: 'Everlong', station: 'Spotify' }),
+            );
+        });
     });
 
     describe('when the TV turns off or switches away', () => {

@@ -13,7 +13,7 @@ The screen is a full-screen photo with the clock top-left, what's playing top-ri
 | Wallpaper    | A nature photo matching the season and the weather (mist, rain, snow, storm, sun, a starry sky on clear nights), a different one each day. Its average colour tints the UI accent | [Pexels](https://www.pexels.com/api/) (API key)                                                  | Photos weekly, day 6-hourly |
 | Clock        | Date and time, in English with a 24-hour clock                                                                                                                                    | Local                                                                                            | Every minute                |
 | Sky          | By day the daylight left and the golden hour, at night the moon phase, how clear the night is and the next sunrise. Northern lights when tonight's Kp is 6 or higher              | Open-Meteo, [NOAA](https://www.swpc.noaa.gov/) Kp forecast, the moon phase is calculated locally | Every minute                |
-| Radio        | Plays an internet radio station over the TV speakers, with the current song and artist, and the last 5 songs in the channel list                                                  | KINK, FLUX FM and DNB Radio "now playing" APIs                                                   | Every 30 seconds            |
+| Radio        | Plays an internet radio station over the TV speakers, or Spotify cast from a phone, with the current song and artist, and the last 5 songs in the channel list                    | KINK, FLUX FM and DNB Radio "now playing" APIs, Spotify Connect on the Pi                        | Every 30 seconds            |
 | Now          | Temperature, conditions, wind and gusts, trail conditions, whether it stays dry, UV from 5, and tree/grass/weed pollen on a 0–10 scale                                            | [Open-Meteo](https://open-meteo.com/) forecast and air quality                                   | Every 5 minutes             |
 | Next 2 hours | Only when rain is coming: when it starts or stops, with a precipitation profile in 15 minute steps                                                                                | Open-Meteo                                                                                       | Every 5 minutes             |
 | This week    | Five days with conditions, chance of rain and temperature range                                                                                                                   | Open-Meteo                                                                                       | Every 5 minutes             |
@@ -29,9 +29,20 @@ After 10 minutes without a remote button press, or straight away with the Back b
 
 The TV events come from HDMI-CEC: `pi/hdmicec.sh` sends the app an F13 key press (no remote button sends it) when libcec reports that the Pi became the active source, or that the TV's power status changed to on. The timeout is `IDLE_AFTER` in `src/app/features/tv/tv.component.ts`.
 
+### Spotify
+
+The Pi is a Spotify Connect device called **Raspberry**, like the TV or a speaker: in the Spotify app, pick Raspberry as the device and it plays on the TV. It needs Spotify Premium. Everything is controlled from the phone. On the TV, Spotify is the last entry in the channel list:
+
+- Casting from the phone takes over from the radio, and the now-playing card, the history and the idle screen show the Spotify song.
+- Picking a radio station while Spotify plays pauses Spotify, so the two never play at the same time.
+- Picking Spotify in the list without anything playing stops the radio and explains how to cast.
+- When the TV turns off or switches away, Spotify pauses too.
+
+It runs on [spotifyd](https://github.com/Spotifyd/spotifyd), whose prebuilt binary works on Debian 11 as is ([raspotify](https://github.com/dtcooper/raspotify) needs Debian 12 or newer). `pi/setup.sh` installs a pinned release after checking its SHA-512. On every player event spotifyd runs `pi/spotify-event.py`, which reads the song from spotifyd's MPRIS interface, writes `/run/raspberry/spotify.json`, and taps the app with F15. At a track change spotifyd fires up to four events within a few seconds, so the hooks take turns, and whether music plays comes from the event rather than MPRIS, which briefly reports "Stopped" in between. spotifyd is found on D-Bus by its unique name, because it loses its MPRIS name when it reconnects to Spotify. Cron also runs the hook every minute, and the app checks the file every 15 seconds, so a missed update corrects itself. To pause Spotify, the app posts to `/control/spotify-pause`: a CGI script that only the Pi itself may call, allowed by one sudo rule to run the pause as `pipi`.
+
 ### Sleep
 
-When the TV turns off or switches to another input, nobody can see the Pi or hear it (its sound goes through the TV). `pi/hdmicec.sh` then sends F14, and the app goes to sleep: it shows the idle screen, drops the radio stream and pauses all polling (weather, song info, northern lights, Pi health). Chromium keeps running, so when the TV comes back the dashboard is there within a fraction of a second, the stream restarts and everything refreshes right away. Measured on the Pi, the CPU goes from 8.5% to 2.6% busy and the sound card closes. Together with the Wi-Fi and Bluetooth chips switched off (see below), that saves a few tenths of a watt: modest, because an idle Pi 3 itself still draws around 2 W.
+When the TV turns off or switches to another input, nobody can see the Pi or hear it (its sound goes through the TV). `pi/hdmicec.sh` then sends F14, and the app goes to sleep: it shows the idle screen, drops the radio stream and pauses all polling (weather, song info, northern lights, Pi health). Chromium keeps running, so when the TV comes back the dashboard is there within a fraction of a second, the stream restarts and everything refreshes right away. Measured on the Pi, the CPU goes from 8.5% to 2.6% busy and the sound card closes. Together with the Bluetooth chip switched off (see below), that saves a few tenths of a watt: modest, because an idle Pi 3 itself still draws around 2 W.
 
 The Pi's HDMI output stays on: on the Pi, CEC runs through the HDMI hardware, so switching it off could stop the Pi from ever hearing the TV turn on again.
 
@@ -69,7 +80,7 @@ Run `npm run start` for a dev server. Navigate to `http://localhost:1337/`.
 Run `npm run deploy`. It asks before each step, `npm run deploy -- --yes` does them all:
 
 1. Build the app.
-2. Mirror `dist/raspberry` into the Pi's web root with `rsync --delete`, so no old files linger. The Pi's own `health.json` stays.
+2. Mirror `dist/raspberry` into the Pi's web root with `rsync --delete`, so no old files linger.
 3. Copy `pi/` to the Pi and run `pi/setup.sh`, which applies the kiosk setup (see below).
 4. Reload the page on the TV, or restart the kiosk when its session files changed.
 
@@ -88,21 +99,26 @@ Run `npm run lint` to lint the project via [ESLint](https://eslint.org/) and [Pr
 
 Everything the Pi needs lives in `pi/`, and `pi/setup.sh` applies it. The script is safe to run again: it only changes what differs, and `npm run deploy` runs it every time.
 
-| File            | Installed as                                   | What it does                                                                                                                                                                              |
-| --------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bash_profile`  | `~/.bash_profile`                              | On the automatic tty1 login: starts the remote control bridge once, then X without a mouse cursor                                                                                         |
-| `xinitrc`       | `~/.xinitrc`                                   | Keeps the TV awake, gives the F13 and F14 signals a keycode Chromium understands, and runs Chromium in kiosk mode, restarting it if it ever quits or crashes                              |
-| `hdmicec.sh`    | `/usr/local/bin/raspberry-cec`                 | Turns TV remote buttons (HDMI-CEC) into key presses with `xdotool`, wakes the app when the TV turns on or switches to the Pi, and puts it to sleep when the TV turns off or switches away |
-| `asoundrc`      | `~/.asoundrc`                                  | Sends all sound to HDMI                                                                                                                                                                   |
-| `pi-health.sh`  | `/usr/local/bin/raspberry-health`              | Writes `health.json`, run every minute by `cron` (`/etc/cron.d/raspberry-health`)                                                                                                         |
-| `lighttpd.conf` | `/etc/lighttpd/conf-enabled/50-raspberry.conf` | Cache headers: built files forever, the page and `health.json` never                                                                                                                      |
-| `journald.conf` | `/etc/systemd/journald.conf.d/raspberry.conf`  | Caps the system log at 50 MB (it had grown to 1.7 GB)                                                                                                                                     |
+| File                                                   | Installed as                                                                                                           | What it does                                                                                                                                                                              |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bash_profile`                                         | `~/.bash_profile`                                                                                                      | On the automatic tty1 login: starts the remote control bridge once, then X without a mouse cursor                                                                                         |
+| `xinitrc`                                              | `~/.xinitrc`                                                                                                           | Keeps the TV awake, gives the F13 and F14 signals a keycode Chromium understands, and runs Chromium in kiosk mode, restarting it if it ever quits or crashes                              |
+| `hdmicec.sh`                                           | `/usr/local/bin/raspberry-cec`                                                                                         | Turns TV remote buttons (HDMI-CEC) into key presses with `xdotool`, wakes the app when the TV turns on or switches to the Pi, and puts it to sleep when the TV turns off or switches away |
+| `asoundrc`                                             | `~/.asoundrc`                                                                                                          | Sends all sound to HDMI                                                                                                                                                                   |
+| `pi-health.sh`                                         | `/usr/local/bin/raspberry-health`                                                                                      | Writes `/run/raspberry/health.json`, run every minute by `cron` (`/etc/cron.d/raspberry-health`)                                                                                          |
+| `lighttpd.conf`                                        | `/etc/lighttpd/conf-enabled/50-raspberry.conf`                                                                         | Cache headers (built files forever, the page and live files never), `/live/` for the live files, and `/control/` for the Pi's own browser only                                            |
+| `tmpfiles.conf`                                        | `/etc/tmpfiles.d/raspberry.conf`                                                                                       | Creates `/run/raspberry` in RAM for the live files, which change every minute and would otherwise wear out the SD card                                                                    |
+| `spotifyd.service`                                     | `/etc/systemd/system/spotifyd.service`                                                                                 | Spotify Connect as `pipi`, through the kiosk's PulseAudio                                                                                                                                 |
+| `spotify-event.py`                                     | `/usr/local/bin/raspberry-spotify`                                                                                     | Writes `/run/raspberry/spotify.json` on every Spotify event and taps the app with F15                                                                                                     |
+| `spotify-pause.sh`, `control-spotify-pause`, `sudoers` | `/usr/local/bin/raspberry-spotify-pause`, `/usr/local/lib/raspberry/control/spotify-pause`, `/etc/sudoers.d/raspberry` | Lets the app pause Spotify, and nothing else                                                                                                                                              |
+| `journald.conf`                                        | `/etc/systemd/journald.conf.d/raspberry.conf`                                                                          | Caps the system log at 50 MB (it had grown to 1.7 GB)                                                                                                                                     |
 
-It also installs the packages the kiosk needs, sets up the automatic login on tty1, and turns off services a wired kiosk doesn't use: Bluetooth, ModemManager, triggerhappy, udisks2, the rsync daemon (rsync over SSH still works), and the display backlight and EEPROM services of other Pi models. It switches the Wi-Fi and Bluetooth chips off with `dtoverlay=disable-wifi` and `dtoverlay=disable-bt` in the boot config, which takes a reboot.
+It also installs the packages the kiosk needs, sets up the automatic login on tty1, and turns off services the kiosk doesn't use: Bluetooth, ModemManager, triggerhappy, udisks2, the rsync daemon (rsync over SSH still works), and the display backlight and EEPROM services of other Pi models. It switches the Bluetooth chip off with `dtoverlay=disable-bt` in the boot config (which takes a reboot), and sets the Wi-Fi country to the Netherlands, without which the Pi's Wi-Fi stays blocked.
 
 ### Hardware and software
 
-- Raspberry Pi 3 Model B, wired network (Wi-Fi and Bluetooth are switched off), HDMI to the TV
+- Raspberry Pi 3 Model B on Wi-Fi, HDMI to the TV, Bluetooth switched off
+- Wi-Fi: the Pi 3 only has 2.4 GHz, so the network needs a 2.4 GHz band (a dual-band network with one name is fine). Wi-Fi power saving is off (`pi/udev-wifi.rules`): on the Pi 3 it makes connections hesitate, which broke Spotify's. Streaming over Wi-Fi costs no measurable extra CPU (7.9% busy against 8.5% on Ethernet, at a signal of -41 dBm). The network and its password live on the Pi only, in `/etc/wpa_supplicant/wpa_supplicant.conf` with the password hashed, never in this repo
 - Raspberry Pi OS Lite 11 (bullseye), 64-bit, with Chromium 126 (the app needs 117 or newer)
 - `/boot/config.txt`: `dtoverlay=vc4-kms-v3d`, `disable_overscan=1`, `hdmi_drive=2` (sound over HDMI) and `hdmi_ignore_cec_init=1` (don't switch the TV's input on boot)
 
@@ -116,7 +132,7 @@ It also installs the packages the kiosk needs, sets up the automatic login on tt
 
 Debian 11 left long-term support in August 2026. Its security archive is being taken down, so `/etc/apt/sources.list` has the security line commented out, as it only gave errors (a backup is in `sources.list.bak-2026-09-26`). The Pi still gets the updates Raspberry Pi publishes for bullseye, but no more Debian security fixes. Upgrading in place to a newer release isn't supported by Raspberry Pi, so when convenient:
 
-1. Flash the current Raspberry Pi OS Lite (64-bit) with Raspberry Pi Imager: set the hostname to `raspberrypi`, the user to `pipi`, and add your SSH key.
+1. Flash the current Raspberry Pi OS Lite (64-bit) with Raspberry Pi Imager: set the hostname to `raspberrypi`, the user to `pipi`, the Wi-Fi network, and add your SSH key.
 2. Add the `/boot/config.txt` lines above (on newer releases the file is `/boot/firmware/config.txt`).
 3. Run `npm run deploy -- --yes` and reboot. `setup.sh` installs everything else.
 
@@ -146,4 +162,4 @@ Then open `chrome://inspect` in Chrome on your computer, add `localhost:9222` un
 
 ### Pi health
 
-`health.json` holds the Pi's temperature, load, memory, storage, uptime and power state (`vcgencmd get_throttled`). The app reads it from its own origin, so no CORS is involved. A warning shows under the now-playing card at 75 °C or more, on under-voltage or throttling, with 90% or more memory or storage in use, or when no measurement came in for 5 minutes.
+`/live/health.json` holds the Pi's temperature, load, memory, storage, uptime and power state (`vcgencmd get_throttled`). The app reads it from its own origin, so no CORS is involved. A warning shows under the now-playing card at 75 °C or more, on under-voltage or throttling, with 90% or more memory or storage in use, or when no measurement came in for 5 minutes.

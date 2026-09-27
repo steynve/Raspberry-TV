@@ -87,6 +87,8 @@ export class RadioService extends HttpService<Kink | Flux | DNB> {
             'NONE',
             '',
         ),
+        // Played from the Spotify app through Spotify Connect on the Pi, not as a stream here
+        new RadioChannel('', 'Spotify', 'SPOTIFY', ''),
     ];
 
     public getNowPlaying(radioChannel: RadioChannel): Observable<Kink | Flux | DNB> {

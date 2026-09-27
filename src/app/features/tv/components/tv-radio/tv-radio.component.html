@@ -7,12 +7,15 @@
 
 <article class="widget now-playing">
     <h2 class="widget-title">
-        <app-icon name="audio-lines" class="playing-icon" [class.active]="playing()" />
+        <app-icon name="audio-lines" class="playing-icon" [class.active]="isPlaying()" />
         <span class="station station-name" [innerHTML]="nowPlayingChannel().visibleName"></span>
     </h2>
     @if (nowPlayingSong()) {
         <p class="song">{{ nowPlayingSong() }}</p>
         <p class="artist">{{ nowPlayingArtist() }}</p>
+    }
+    @if (isSpotify() && !nowPlayingSong()) {
+        <p class="hint">In the Spotify app, pick Raspberry as the device</p>
     }
     @if (blocked()) {
         <p class="blocked">Press any button to start the radio</p>

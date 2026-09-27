@@ -24,8 +24,8 @@ if ask "$mode" "Build a new version?"; then
 fi
 
 if ask "$mode" "Deploy the app?"; then
-    # Mirror the build into the web root: old files go, the Pi's own health.json stays
-    rsync -az --delete --exclude health.json --no-owner --no-group \
+    # Mirror the build into the web root, so no old files linger
+    rsync -az --delete --no-owner --no-group \
         -e "ssh ${SSH_OPTIONS[*]}" --rsync-path="sudo rsync" \
         dist/raspberry/ "$PI:/var/www/html/"
 fi

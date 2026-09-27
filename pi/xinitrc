@@ -6,9 +6,9 @@ xset -dpms
 xset s off
 xset s noblank
 
-# pi/hdmicec.sh signals the app with F13 (wake) and F14 (sleep). They have no key in the default
-# keymap, and Chromium can't name a key without one, so give them their standard keycodes.
-xmodmap -e "keycode 191 = F13" -e "keycode 192 = F14"
+# The Pi signals the app with F13 (wake), F14 (sleep) and F15 (Spotify changed). They have no key in
+# the default keymap, and Chromium can't name a key without one, so give them their standard keycodes.
+xmodmap -e "keycode 191 = F13" -e "keycode 192 = F14" -e "keycode 193 = F15"
 
 # Chromium is called chromium-browser on Raspberry Pi OS 11 and chromium from 12 on
 BROWSER=$(command -v chromium-browser || command -v chromium)

@@ -37,6 +37,12 @@
     color: var(--fg-muted);
 }
 
+.hint {
+    margin-block-start: 0.5rem;
+    font-size: var(--text-meta);
+    color: var(--fg-muted);
+}
+
 .blocked {
     margin-block-start: 0.5rem;
     font-size: var(--text-meta);
