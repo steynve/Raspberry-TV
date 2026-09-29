@@ -9,6 +9,7 @@ export class SpotifyStateSerializer {
             json.title,
             json.artist,
             json.album,
+            json.cover ?? '', // Files from before covers were added don't have one
         );
     }
 

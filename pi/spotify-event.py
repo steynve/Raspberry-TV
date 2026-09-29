@@ -3,7 +3,9 @@
 and by cron every minute with PLAYER_EVENT=sync.
 
 Reads what's playing from spotifyd's MPRIS interface, writes it to /run/raspberry/spotify.json
-for the TV app, and tells the app with F15. Installed as /usr/local/bin/raspberry-spotify.
+for the TV app, and tells the app with F15. When music starts while the TV is off or on another
+input, it turns the TV on and switches it to the Pi, like a Chromecast: the TV is the Pi's speaker.
+Installed as /usr/local/bin/raspberry-spotify.
 """
 import fcntl
 import json
@@ -13,6 +15,13 @@ import time
 
 STATE = '/run/raspberry/spotify.json'
 LOCK = '/run/raspberry/spotify.lock'
+# Written by the remote bridge (hdmicec.sh): "on" while the TV shows the Pi, "off" when it doesn't
+TV_STATE = '/run/raspberry/tv'
+# Read by cec-client, see bash_profile
+CEC_COMMANDS = '/run/raspberry/cec'
+# Turning the TV off pauses Spotify (the app does that), but the pause takes a moment. A song that
+# starts in that moment shouldn't turn the TV right back on.
+TV_OFF_GRACE = 10  # seconds
 # Only what changes the screen. spotifyd also reports volume, shuffle, preloading and the like,
 # up to four events within a second at a track change.
 SHOWN = {'sessionconnected', 'load', 'start', 'change', 'play', 'playing', 'pause', 'paused',
@@ -60,10 +69,39 @@ def read(name):
     return metadata, lines[1]['data']
 
 
+def tv_is_off():
+    try:
+        with open(TV_STATE) as file:
+            off = file.read().strip() == 'off'
+        return off and time.time() - os.path.getmtime(TV_STATE) > TV_OFF_GRACE
+    except OSError:
+        # Nothing heard from the TV since the Pi started
+        return True
+
+
+# "on 0" turns on the TV (CEC address 0), "as" makes the Pi the active source: the TV switches to
+# it, and tells the app to wake up (F13, see hdmicec.sh)
+def wake_tv():
+    try:
+        # Non-blocking, so it fails right away when cec-client isn't running, instead of waiting
+        pipe = os.open(CEC_COMMANDS, os.O_WRONLY | os.O_NONBLOCK)
+    except OSError:
+        return
+    with os.fdopen(pipe, 'w') as commands:
+        commands.write('on 0\nas\n')
+    # Once is enough: the next song shouldn't send it again, even if the TV never reports back
+    with open(TV_STATE, 'w') as file:
+        file.write('on\n')
+
+
 def main():
     event = os.environ.get('PLAYER_EVENT', '')
     if event not in SHOWN:
         return
+
+    # Right away, the TV takes a few seconds to come on
+    if event in PLAYING and tv_is_off():
+        wake_tv()
 
     # spotifyd starts a hook per event without waiting: take turns, so the last event writes last
     with open(LOCK, 'w') as lock:
@@ -104,6 +142,7 @@ def update(event):
         'title': title,
         'artist': ', '.join(artists) if isinstance(artists, list) else str(artists),
         'album': metadata.get('xesam:album', ''),
+        'cover': metadata.get('mpris:artUrl', ''),
     }
 
     # Write the whole file at once, so the app never reads half of it

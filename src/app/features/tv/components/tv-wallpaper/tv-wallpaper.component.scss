@@ -16,18 +16,23 @@
 
     // After sunset the photo dims and the text softens, so the TV doesn't light up the room.
     // On a local dimming (mini-LED) panel the dark parts then turn truly black instead of grey.
+    // Themes can bring their own night colours (--theme-fg-night and so on, see src/styles/themes/)
     &.night {
-        --fg: oklch(0.9 0.005 95);
-        --fg-muted: oklch(0.9 0.005 95 / 0.74);
-        --fg-subtle: oklch(0.9 0.005 95 / 0.56);
+        --fg: var(--theme-fg-night, oklch(0.9 0.005 95));
+        --fg-muted: var(--theme-fg-muted-night, oklch(0.9 0.005 95 / 0.74));
+        --fg-subtle: var(--theme-fg-subtle-night, oklch(0.9 0.005 95 / 0.56));
         // The glass shows the undimmed photo, so it needs a darker tint to match
-        --glass-bg: oklch(0.12 0.01 95 / 0.66);
+        --glass-bg: var(--theme-glass-bg-night, oklch(0.12 0.01 95 / 0.66));
     }
 
     // The accent takes the hue of today's photo, at a lightness that always reads well on glass.
     // Chroma follows the photo too, so a grey photo gives a neutral accent instead of a random hue.
+    // A theme with a palette of its own sets --theme-accent instead.
     @supports (color: oklch(from red l c h)) {
-        --accent: oklch(from var(--photo-color, oklch(0.5 0.05 145)) 0.86 min(c * 1.5, 0.09) h);
+        --accent: var(
+            --theme-accent,
+            oklch(from var(--photo-color, oklch(0.5 0.05 145)) 0.86 min(c * 1.5, 0.09) h)
+        );
     }
 
     // Scrims keep the top (clock) and bottom (widgets) readable and leave the middle to the photo

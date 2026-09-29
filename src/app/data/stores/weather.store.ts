@@ -2,7 +2,7 @@ import { ClockStore } from './clock.store';
 import { sunState } from '@data/utils/sun';
 import { upcomingRain } from '@data/utils/rain';
 import { PowerStore } from './power.store';
-import { catchError, EMPTY, forkJoin, switchMap } from 'rxjs';
+import { catchError, EMPTY, forkJoin, of, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OpenMeteoService } from '@data/services/openmeteo.service';
 import { computed, inject, Injectable, signal } from '@angular/core';
@@ -42,14 +42,21 @@ export class WeatherStore {
                 switchMap(() =>
                     forkJoin({
                         forecast: this.openMeteoService.getForecast(),
-                        airQuality: this.openMeteoAirqualityService.getAirQuality(),
+                        // The pollen is extra: when its API doesn't answer, the weather still shows
+                        airQuality: this.openMeteoAirqualityService
+                            .getAirQuality()
+                            .pipe(catchError(() => of(undefined))),
                     }).pipe(catchError(() => EMPTY)),
                 ),
                 takeUntilDestroyed(),
             )
             .subscribe(({ forecast, airQuality }) => {
                 this.forecast.set(forecast);
-                this.airQuality.set(airQuality);
+
+                // A failed request keeps the last pollen count
+                if (airQuality) {
+                    this.airQuality.set(airQuality);
+                }
             });
     }
 }

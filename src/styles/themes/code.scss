@@ -1,0 +1,101 @@
+/* The techy theme: VS Code on a Mac, connected to the Pi, in Fira Code with its ligatures
+   (github.com/tonsky/FiraCode). Every widget is an editor window with macOS's traffic lights and
+   its path as the title ("~/weather"). The colours are the glass theme's, calm enough for the
+   living room, and so is the glass: the windows take on the photo's colours and light. */
+:root[data-theme='code'] {
+    --font-sans: 'Fira Code Variable', ui-monospace, monospace;
+    font-variant-ligatures: contextual;
+
+    /* Monospace runs wider than Inter: a notch smaller keeps every line in its widget */
+    --text-label: 1.375rem;
+    --text-meta: 1.5rem;
+    --text-body: 1.75rem;
+    --text-lead: 2.125rem;
+    --text-title: 2.5rem;
+    --text-display: 5rem;
+    --text-clock: 10rem;
+
+    /* Editor windows have squarer corners than macOS widgets, and need a little less room inside */
+    --radius-lg: 0.75rem;
+    --radius-md: 0.5rem;
+    --widget-padding: 1.25rem;
+
+    // The frosted glass, with a plain edge instead of the rim and sheen of the glass theme
+    .widget {
+        border-color: var(--glass-edge);
+        background:
+            linear-gradient(var(--glass-bg), var(--glass-bg)),
+            var(--photo-blurred, none) center / cover no-repeat fixed;
+    }
+
+    // Opaque, it moves. Its title bar is a row of its grid: only as tall as it needs.
+    .widget.channels {
+        grid-template-rows: auto 1fr;
+        background: var(--sheet-bg);
+    }
+
+    // The window's title bar: a shade of the same glass, with its path and macOS's traffic lights,
+    // drawn as gradients. Grey, like the lights of a window that isn't focused: only the station
+    // list has colour, it's the window you're working in when it's open. The bar spans the
+    // widget's padding, and leaves as much room below it as on the sides.
+    .widget[data-path]::before {
+        --light-close: oklch(1 0 0 / 0.22);
+        --light-minimise: oklch(1 0 0 / 0.22);
+        --light-zoom: oklch(1 0 0 / 0.22);
+
+        content: attr(data-path);
+        grid-column: 1 / -1;
+        margin: calc(var(--widget-padding) * -1) calc(var(--widget-padding) * -1)
+            calc(var(--widget-padding) - var(--widget-gap));
+        padding: 0.5rem 1rem;
+        border-start-start-radius: inherit;
+        border-start-end-radius: inherit;
+        border-block-end: 1px solid var(--glass-edge);
+        background:
+            radial-gradient(circle at 1.25rem 50%, var(--light-close) 0.35rem, transparent 0.4rem),
+            radial-gradient(
+                circle at 2.25rem 50%,
+                var(--light-minimise) 0.35rem,
+                transparent 0.4rem
+            ),
+            radial-gradient(circle at 3.25rem 50%, var(--light-zoom) 0.35rem, transparent 0.4rem),
+            oklch(0 0 0 / 0.2);
+        font-size: var(--text-label);
+        color: var(--fg-subtle);
+        text-align: center;
+    }
+
+    // macOS's colours, a little softer
+    .widget.channels::before {
+        --light-close: oklch(0.68 0.16 25);
+        --light-minimise: oklch(0.8 0.13 85);
+        --light-zoom: oklch(0.72 0.14 145);
+    }
+
+    // The title bar names the weather windows already. The radio keeps its title: it's the station.
+    .widget:is(.now, .rain, .week) > .widget-title {
+        display: none;
+    }
+
+    .widget-title {
+        font-weight: 450;
+    }
+
+    // The date is a comment: "// Tuesday 29 September". Fira Code joins the two slashes.
+    app-tv-clock .date {
+        font-weight: 450;
+    }
+
+    app-tv-clock .date::before {
+        content: '// ';
+    }
+
+    // A plain colour instead of the glass fill, in a lighter weight: monospace digits are wide
+    app-tv-clock .time,
+    app-tv-ambient .time {
+        font-weight: 300;
+        letter-spacing: -0.06em;
+        background: none;
+        -webkit-text-fill-color: currentcolor;
+    }
+}

@@ -22,7 +22,9 @@ describe('TvRadioComponent', () => {
     let keyDownSubject: Subject<KeyboardEventKey>;
     let spotify: {
         state: ReturnType<typeof signal<SpotifyState | undefined>>;
-        pause: ReturnType<typeof vi.fn>;
+        cover: ReturnType<typeof signal<string>>;
+        coverColor: ReturnType<typeof signal<string | undefined>>;
+        disconnect: ReturnType<typeof vi.fn>;
     };
 
     const spotifyPlaying = (playing = true): SpotifyState =>
@@ -30,7 +32,12 @@ describe('TvRadioComponent', () => {
 
     beforeEach(async () => {
         vi.useFakeTimers();
-        spotify = { state: signal<SpotifyState | undefined>(undefined), pause: vi.fn() };
+        spotify = {
+            state: signal<SpotifyState | undefined>(undefined),
+            cover: signal(''),
+            coverColor: signal<string | undefined>(undefined),
+            disconnect: vi.fn(),
+        };
 
         TestBed.configureTestingModule({
             providers: [
@@ -92,6 +99,34 @@ describe('TvRadioComponent', () => {
             expect(fixture.nativeElement.querySelector('.song').textContent).toBe('Everlong');
         });
 
+        it('should show the cover, and tint the widget with its colour', () => {
+            spotify.state.set(spotifyPlaying());
+            spotify.cover.set('https://i.scdn.co/image/cover');
+            spotify.coverColor.set('rgb(200 40 40)');
+            fixture.detectChanges();
+
+            const widget: HTMLElement = fixture.nativeElement.querySelector('.now-playing');
+            expect(widget.querySelector<HTMLImageElement>('.cover')?.src).toBe(
+                'https://i.scdn.co/image/cover',
+            );
+            expect(widget.classList).toContain('cover-tinted');
+            expect(widget.style.getPropertyValue('--cover-color')).toBe('rgb(200 40 40)');
+        });
+
+        it('should take over while the TV is off, so the radio stays quiet when casting turns it on', () => {
+            const power = TestBed.inject(PowerStore);
+            power.sleep();
+            TestBed.tick();
+
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+            power.wake();
+            TestBed.tick();
+
+            expect(component.isSpotify()).toBe(true);
+            expect(audio().hasAttribute('src')).toBe(false);
+        });
+
         it('should show when Spotify is paused on the phone', () => {
             spotify.state.set(spotifyPlaying());
             fixture.detectChanges();
@@ -102,14 +137,14 @@ describe('TvRadioComponent', () => {
             expect(component.isPlaying()).toBe(false);
         });
 
-        it('should pause Spotify when a radio station is picked', () => {
-            spotify.state.set(spotifyPlaying());
+        it('should let go of the phone when a radio station is picked, playing or paused', () => {
+            spotify.state.set(spotifyPlaying(false));
             fixture.detectChanges();
 
             component.setSelectedChannel(0);
             component.setNowPlayingChannel();
 
-            expect(spotify.pause).toHaveBeenCalled();
+            expect(spotify.disconnect).toHaveBeenCalled();
             expect(audio().src).toBe(radioService.radioChannels[0].file);
         });
 
@@ -136,6 +171,59 @@ describe('TvRadioComponent', () => {
         });
     });
 
+    describe('remote shortcuts', () => {
+        const press = (key: KeyboardEventKey): void => {
+            fixture.componentRef.setInput('overlay', false);
+            keyDownSubject.next(key);
+        };
+
+        it('should switch straight to a station on its number', () => {
+            press('3');
+
+            expect(component.nowPlayingChannelIndex()).toBe(2);
+            expect(audio().src).toBe(radioService.radioChannels[2].file);
+        });
+
+        it('should wait for a second digit when the number could go on, like a TV', () => {
+            // 12 stations: 1 could become 10, 11 or 12
+            const extra = radioService.radioChannels[0]; // The mock only answers like KINK
+            component.radioChannels.push(...Array.from({ length: 7 }, () => extra));
+            press('5');
+
+            press('1');
+            fixture.detectChanges();
+            expect(component.nowPlayingChannelIndex()).toBe(4);
+            expect(fixture.nativeElement.querySelector('.channel-number.typing').textContent).toBe(
+                '1',
+            );
+
+            press('2');
+            expect(component.nowPlayingChannelIndex()).toBe(11);
+
+            press('1');
+            vi.advanceTimersByTime(1500);
+            expect(component.nowPlayingChannelIndex()).toBe(0);
+            expect(component.typedNumber()).toBe('');
+        });
+
+        it('should go round the list with channel up and down', () => {
+            press('PageDown');
+            expect(component.nowPlayingChannelIndex()).toBe(radioService.radioChannels.length - 1);
+
+            press('PageUp');
+            expect(component.nowPlayingChannelIndex()).toBe(0);
+        });
+
+        it('should go back and forth between the last two stations on yellow', () => {
+            press('3');
+            press('F18');
+            expect(component.nowPlayingChannelIndex()).toBe(0);
+
+            press('F18');
+            expect(component.nowPlayingChannelIndex()).toBe(2);
+        });
+    });
+
     describe('when the TV turns off or switches away', () => {
         it('should drop the stream and stop asking what is playing', () => {
             const power = TestBed.inject(PowerStore);
@@ -149,6 +237,36 @@ describe('TvRadioComponent', () => {
 
             vi.advanceTimersByTime(1000 * 60 * 5);
             expect(radioService.getNowPlaying).toHaveBeenCalledTimes(calls);
+        });
+
+        it('should go back to the first station when it was on Spotify', () => {
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+            const power = TestBed.inject(PowerStore);
+
+            power.sleep();
+            TestBed.tick();
+            expect(component.nowPlayingChannelIndex()).toBe(0);
+            expect(audio().hasAttribute('src')).toBe(false);
+
+            // Spotify has let go of the phone by then (see SpotifyStore)
+            spotify.state.set(spotifyPlaying(false));
+            power.wake();
+            TestBed.tick();
+            expect(audio().src).toBe(radioService.radioChannels[0].file);
+        });
+
+        it('should stay on the station it was on otherwise', () => {
+            // A sixth station, like KINK: the mock only answers like KINK
+            component.radioChannels.push(radioService.radioChannels[0]);
+            fixture.componentRef.setInput('overlay', false);
+            keyDownSubject.next('6');
+            const power = TestBed.inject(PowerStore);
+
+            power.sleep();
+            TestBed.tick();
+
+            expect(component.nowPlayingChannelIndex()).toBe(5);
         });
 
         it('should pick the stream up again, and ask what is playing right away', () => {

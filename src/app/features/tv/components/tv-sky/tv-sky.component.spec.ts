@@ -14,6 +14,9 @@ describe('TvSkyComponent', () => {
     // Kp 7.33 from 21:00 until midnight local time
     const aurora = new KpForecast([{ start: new Date(2026, 2, 1, 21), kp: 7.33 }]);
 
+    const sky = (element: HTMLElement): string | undefined =>
+        element.querySelector('.sky')?.textContent?.trim();
+
     const render = (now: Date, kp: KpForecast = new KpForecast([])): HTMLElement => {
         TestBed.configureTestingModule({
             providers: [
@@ -38,14 +41,14 @@ describe('TvSkyComponent', () => {
     it('should show the daylight left during the day', () => {
         const element = render(new Date(2026, 2, 1, 12));
 
-        expect(element.textContent?.trim()).toBe('6h 30m of daylight left · sunset 18:30');
+        expect(sky(element)).toBe('6h 30m of daylight left · sunset 18:30');
         expect(element.querySelector('app-icon.sun')).toBeTruthy();
     });
 
     it('should announce the golden hour', () => {
         const element = render(new Date(2026, 2, 1, 18, 5));
 
-        expect(element.textContent?.trim()).toBe('Golden hour · sunset 18:30, in 25m');
+        expect(sky(element)).toBe('Golden hour · sunset 18:30, in 25m');
         expect(element.querySelector('app-icon.golden')).toBeTruthy();
     });
 
@@ -56,7 +59,7 @@ describe('TvSkyComponent', () => {
         const element = render(now);
 
         expect(element.querySelector('svg.moon')).toBeTruthy();
-        expect(element.textContent?.trim()).toBe(
+        expect(sky(element)).toBe(
             `${moon.name} ${Math.round(moon.illumination * 100)}% · sunrise 06:58`,
         );
     });
@@ -75,6 +78,20 @@ describe('TvSkyComponent', () => {
                 .querySelector('.aurora')
                 ?.textContent?.trim(),
         ).toBe('Northern lights possible tonight · Kp 7');
+    });
+
+    it('should say how fast the days change, during the day', () => {
+        // The mock's days are 11h 30m and 11h 34m
+        expect(
+            render(new Date(2026, 2, 1, 12))
+                .querySelector('.sky-notes')
+                ?.textContent?.trim(),
+        ).toBe('Gaining 4 min of daylight a day');
+    });
+
+    it('should leave out the notes when there is nothing to note', () => {
+        // The mock has no forecast for sunset or the night
+        expect(render(new Date(2026, 2, 1, 18, 5)).querySelector('.sky-notes')).toBeNull();
     });
 
     it('should stay quiet about a quiet sky', () => {

@@ -7,25 +7,29 @@
 
 :root {
     /* One knob for the size of everything: text, icons, spacing and cards are all in rem.
-       0.8 makes body text on a 50" TV at 2.5 m look as big as 14px text on a 27" 1440p
-       monitor at 60 cm (both about 19 arcminutes). Try 0.85 for bigger, 0.75 for smaller. */
-    --ui-scale: 0.8;
+       Sized by the angle text covers in your view (one 1080p pixel on a 50" TV at 2.5 m is about
+       0.8 arcminute). At 0.7, body text covers ~17 arcminutes and secondary lines ~14.5: between a
+       MacBook on "More space" (~14.5) and a 27" 1440p monitor (~17). 0.6 matches the MacBook, 0.8 is
+       the classic 10-foot size. Below 0.65 thin text starts to show its 1080p pixels. */
+    --ui-scale: 0.7;
 
     /* The root size fits the UI to any screen: 16px × the scale on a 1920×1080 TV, twice that
        on 4K, and it never overflows other aspect ratios */
     font-size: calc(min(100vw / 120, 100vh / 67.5) * var(--ui-scale));
 
-    /* Type scale, in px on the 1080p TV at a scale of 0.8 */
-    --text-label: 1.5rem; /* 19px, uppercase widget titles */
-    --text-meta: 1.625rem; /* 21px, secondary lines */
-    --text-body: 1.875rem; /* 24px */
-    --text-lead: 2.25rem; /* 29px, the one sentence that matters in a widget */
-    --text-title: 2.75rem; /* 35px, the song */
-    --text-display: 5.5rem; /* 70px, the temperature */
-    --text-clock: 11rem; /* 141px */
+    /* Type scale, in px on the 1080p TV at a scale of 0.7 */
+    --text-label: 1.5rem; /* 17px, uppercase widget titles */
+    --text-meta: 1.625rem; /* 18px, secondary lines */
+    --text-body: 1.875rem; /* 21px */
+    --text-lead: 2.25rem; /* 25px, the one sentence that matters in a widget */
+    --text-title: 2.75rem; /* 31px, the song */
+    --text-display: 5.5rem; /* 62px, the temperature */
+    --text-clock: 11rem; /* 123px */
 
-    --font-sans: 'Geist Variable', system-ui, sans-serif;
-    --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+    /* Inter: the open font closest to Apple's San Francisco, which may only be used on Apple's own
+       devices. Its optical size axis draws big text tighter, like SF Pro Display, and small text
+       more open, like SF Pro Text. */
+    --font-sans: 'Inter Variable', system-ui, sans-serif;
 
     --fg: oklch(0.98 0.005 95);
     /* Secondary text needs more contrast from the couch than on a desk */
@@ -39,13 +43,19 @@
     /* The channel sheet moves, so it can't use the photo glass, see tv-radio.component.scss */
     --sheet-bg: linear-gradient(oklch(0.19 0.01 95), oklch(0.14 0.01 95));
 
-    --radius-lg: 1.75rem;
-    --radius-md: 1rem;
+    /* Liquid Glass rounds more than the macOS before it */
+    --radius-lg: 2.25rem;
+    --radius-md: 1.125rem;
+    /* Spacing, on one scale: 0.25, 0.5, 0.75, 1, 1.5 and 2rem inside widgets, 1.5rem between them
+       and 3.5rem from the edge of the screen. Widgets have the same padding on every side. */
     --edge: 3.5rem;
     --gap: 1.5rem;
+    --widget-padding: 1.5rem;
+    --widget-gap: 1rem;
     --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
-    /* Overridden per photo on the wallpaper, see tv-wallpaper.component.scss */
+    /* Overridden per photo on the wallpaper, see tv-wallpaper.component.scss, unless a theme sets
+       --theme-accent. A theme sets --theme-fg-night and the like for after sunset. */
     --accent: oklch(0.86 0.07 145);
     --rain: oklch(0.78 0.11 235);
     --cold: oklch(0.8 0.09 230);

@@ -19,4 +19,12 @@
             <span class="aurora"><app-icon name="sparkles" /> {{ aurora }}</span>
         }
     </p>
+
+    @if (notes().length) {
+        <ul class="sky-notes">
+            @for (note of notes(); track note.kind) {
+                <li [class]="note.kind"><app-icon [name]="note.icon" /> {{ note.text }}</li>
+            }
+        </ul>
+    }
 }

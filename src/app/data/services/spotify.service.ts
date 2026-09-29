@@ -4,7 +4,7 @@ import { HttpService } from './http.service';
 import { SpotifyState } from '@data/models/spotify-state.model';
 import { SpotifyStateSerializer } from '@data/serializers/spotify-state.serializer';
 
-// Spotify Connect runs on the Pi (spotifyd): this reads its state and pauses it, same origin
+// Spotify Connect runs on the Pi (spotifyd): this reads its state and controls it, same origin
 @Injectable({
     providedIn: 'root',
 })
@@ -23,7 +23,8 @@ export class SpotifyService extends HttpService<SpotifyState> {
         return this.read();
     }
 
-    public pause(): Observable<string> {
-        return this.http.post('/control/spotify-pause', null, { responseType: 'text' });
+    // Pauses and lets go of the phone, see pi/spotify-disconnect.sh
+    public disconnect(): Observable<string> {
+        return this.http.post('/control/spotify-disconnect', null, { responseType: 'text' });
     }
 }

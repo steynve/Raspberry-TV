@@ -9,6 +9,7 @@
             <app-tv-pi-alert />
         </div>
         <app-tv-weather class="tv-weather" />
+        <app-tv-theme-switcher [visible]="showThemes()" />
 
         @let nowPlaying = radio();
         <app-tv-ambient
@@ -17,6 +18,8 @@
             [artist]="nowPlaying?.nowPlayingArtist() ?? ''"
             [station]="nowPlaying?.nowPlayingChannel().visibleName ?? ''"
             [playing]="nowPlaying?.isPlaying() ?? false"
+            [cover]="nowPlaying?.nowPlayingCover() ?? ''"
+            [coverColor]="nowPlaying?.nowPlayingCoverColor()"
         />
     </main>
 </app-tv-wallpaper>

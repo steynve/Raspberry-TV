@@ -1,10 +1,12 @@
-import { Subject } from 'rxjs';
+import { EMPTY, Observable, of, Subject } from 'rxjs';
+import { TvService, TvState } from '@data/services/tv.service';
 import { TvComponent } from './tv.component';
 import { Component, input } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PowerStore } from '@data/stores/power.store';
 import { SpotifyStore } from '@data/stores/spotify.store';
+import { ThemeStore } from '@data/stores/theme.store';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
 
 @Component({ selector: 'app-tv-radio', template: '' })
@@ -15,6 +17,11 @@ class TvRadioStubComponent {
 
 @Component({ selector: 'app-tv-clock', template: '' })
 class TvClockStubComponent {}
+
+@Component({ selector: 'app-tv-theme-switcher', template: '' })
+class TvThemeSwitcherStubComponent {
+    public readonly visible = input(false);
+}
 
 @Component({ selector: 'app-tv-pi-alert', template: '' })
 class TvPiAlertStubComponent {}
@@ -37,6 +44,8 @@ class TvAmbientStubComponent {
     public readonly artist = input('');
     public readonly station = input('');
     public readonly playing = input(false);
+    public readonly cover = input('');
+    public readonly coverColor = input<string>();
 }
 
 const TEN_MINUTES = 1000 * 60 * 10;
@@ -50,13 +59,17 @@ describe('TvComponent', () => {
     };
 
     const refresh = vi.fn();
+    let tvState: Observable<TvState> = EMPTY;
 
     beforeEach(() => {
         vi.useFakeTimers();
         refresh.mockClear();
 
         TestBed.configureTestingModule({
-            providers: [{ provide: SpotifyStore, useValue: { refresh } }],
+            providers: [
+                { provide: SpotifyStore, useValue: { refresh } },
+                { provide: TvService, useValue: { getState: (): Observable<TvState> => tvState } },
+            ],
         });
         TestBed.overrideComponent(TvComponent, {
             set: {
@@ -68,6 +81,7 @@ describe('TvComponent', () => {
                     TvWeatherStubComponent,
                     TvWallpaperStubComponent,
                     TvAmbientStubComponent,
+                    TvThemeSwitcherStubComponent,
                 ],
             },
         });
@@ -78,6 +92,16 @@ describe('TvComponent', () => {
     });
 
     afterEach(() => vi.useRealTimers());
+
+    it('should go straight to sleep when it starts while the TV is off', () => {
+        tvState = of('off');
+        fixture = TestBed.createComponent(TvComponent);
+        fixture.detectChanges();
+        tvState = EMPTY;
+
+        expect(fixture.componentInstance.idle()).toBe(true);
+        expect(TestBed.inject(PowerStore).awake()).toBe(false);
+    });
 
     it('should create', () => {
         expect(component).toBeTruthy();
@@ -109,6 +133,20 @@ describe('TvComponent', () => {
 
             pressKey('Enter');
             expect(component.overlay()).toBe(true);
+        });
+
+        it('should act on a number or colour button right away, even when idle', () => {
+            const keys: KeyboardEventKey[] = [];
+            component.keyDownSubject.subscribe((key) => keys.push(key));
+            vi.advanceTimersByTime(TEN_MINUTES);
+
+            pressKey('3');
+            expect(component.idle()).toBe(false);
+            expect(keys).toEqual(['3']);
+
+            component.goIdle();
+            pressKey('F17');
+            expect(TestBed.inject(ThemeStore).theme()).toBe('code');
         });
 
         it('should wake on F13 from the TV, which never does anything else', () => {
@@ -226,6 +264,41 @@ describe('TvComponent', () => {
 
             vi.advanceTimersByTime(TEN_MINUTES);
             expect(component.idle()).toBe(true);
+        });
+
+        describe('themes', () => {
+            afterEach(() => localStorage.clear());
+
+            it('should pick a theme with the red and green buttons', () => {
+                const themes = TestBed.inject(ThemeStore);
+
+                pressKey('F17');
+                expect(themes.theme()).toBe('code');
+
+                pressKey('F16');
+                expect(themes.theme()).toBe('glass');
+            });
+
+            it('should show the options for a moment after every colour button', () => {
+                pressKey('F17');
+                vi.advanceTimersByTime(0);
+                expect(component.showThemes()).toBe(true);
+
+                vi.advanceTimersByTime(2000);
+                pressKey('F16');
+                vi.advanceTimersByTime(2000);
+                expect(component.showThemes()).toBe(true);
+
+                vi.advanceTimersByTime(500);
+                expect(component.showThemes()).toBe(false);
+            });
+
+            it('should leave the theme alone on yellow and blue', () => {
+                pressKey('F18');
+                pressKey('F19');
+
+                expect(TestBed.inject(ThemeStore).theme()).toBe('glass');
+            });
         });
 
         it('should toggle the overlay on "Enter" and render it', () => {

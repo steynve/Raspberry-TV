@@ -37,6 +37,10 @@ describe('wallpaper', () => {
             forecastHourlyMock.et0_fao_evapotranspiration,
             [100, 100, 100, 100],
             forecastHourlyMock.wind_gusts_10m,
+            forecastHourlyMock.precipitation_probability,
+            forecastHourlyMock.cloud_cover_low,
+            forecastHourlyMock.cloud_cover_mid,
+            forecastHourlyMock.cloud_cover_high,
         );
 
         // The mock's cloud cover between 12:00 and 14:00 is 15%

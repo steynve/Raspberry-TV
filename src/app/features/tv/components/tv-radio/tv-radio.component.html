@@ -5,14 +5,41 @@
     (waiting)="playing.set(false)"
 ></audio>
 
-<article class="widget now-playing">
+<article
+    class="widget now-playing"
+    data-path="~/radio"
+    [class.cover-tinted]="nowPlayingCoverColor()"
+    [style.--cover-color]="nowPlayingCoverColor()"
+>
     <h2 class="widget-title">
         <app-icon name="audio-lines" class="playing-icon" [class.active]="isPlaying()" />
-        <span class="station station-name" [innerHTML]="nowPlayingChannel().visibleName"></span>
+        @if (typedNumber()) {
+            <!-- A station number being typed on a remote that sends numbers, or a keyboard -->
+            <span class="channel-number typing">{{ typedNumber() }}</span>
+            <span
+                class="station station-name typing"
+                [innerHTML]="typedChannel()?.visibleName"
+            ></span>
+        } @else {
+            <span class="station station-name" [innerHTML]="nowPlayingChannel().visibleName"></span>
+        }
     </h2>
     @if (nowPlayingSong()) {
-        <p class="song">{{ nowPlayingSong() }}</p>
-        <p class="artist">{{ nowPlayingArtist() }}</p>
+        <div class="track">
+            @if (nowPlayingCover(); as cover) {
+                <img
+                    class="cover"
+                    [class.paused]="!isPlaying()"
+                    [src]="cover"
+                    crossorigin="anonymous"
+                    alt=""
+                />
+            }
+            <div>
+                <p class="song">{{ nowPlayingSong() }}</p>
+                <p class="artist">{{ nowPlayingArtist() }}</p>
+            </div>
+        </div>
     }
     @if (isSpotify() && !nowPlayingSong()) {
         <p class="hint">In the Spotify app, pick Raspberry as the device</p>
@@ -22,7 +49,7 @@
     }
 </article>
 
-<aside class="widget channels" [class.open]="overlay()">
+<aside class="widget channels" data-path="~/radio/stations" [class.open]="overlay()">
     <section class="sheet-column">
         <h2 class="widget-title">Stations</h2>
 

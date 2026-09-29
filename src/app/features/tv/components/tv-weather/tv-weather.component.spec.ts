@@ -74,6 +74,11 @@ describe('TvWeatherComponent', () => {
         expect(component.trail()).toBe('Trails muddy');
     });
 
+    it('should say how long it stays good to ride', () => {
+        // The mock's forecast ends at 13:00, dry since 10:00
+        expect(component.ride()).toBe('Good to ride until 13:00');
+    });
+
     describe('UV', () => {
         it("should warn on a sunny day with today's maximum", () => {
             // The mock's maximum today is 6.4

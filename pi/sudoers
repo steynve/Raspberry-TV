@@ -1,2 +1,2 @@
-# The web server may pause Spotify as pipi, and nothing else. Installed as /etc/sudoers.d/raspberry.
-www-data ALL=(pipi) NOPASSWD: /usr/local/bin/raspberry-spotify-pause
+# The web server may disconnect Spotify as pipi, and nothing else. Installed as /etc/sudoers.d/raspberry.
+www-data ALL=(pipi) NOPASSWD: /usr/local/bin/raspberry-spotify-disconnect

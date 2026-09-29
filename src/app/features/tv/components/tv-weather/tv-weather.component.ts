@@ -7,7 +7,14 @@ import { weatherCondition } from '@data/constants/weather-conditions';
 import { IconName } from '@shared/components/icon/icon-name.type';
 import { IconComponent } from '@shared/components/icon/icon.component';
 import { TvForecastComponent } from '../tv-forecast/tv-forecast.component';
-import { currentGusts, TrailCondition, trailCondition } from '@data/utils/outdoors';
+import { formatTime } from '@data/utils/time';
+import {
+    currentGusts,
+    RideOutlook,
+    rideOutlook,
+    TrailCondition,
+    trailCondition,
+} from '@data/utils/outdoors';
 
 type PollenType =
     | 'alder_pollen'
@@ -25,6 +32,33 @@ const TRAIL_LABELS: Record<TrailCondition, string> = {
     dry: 'Trails dry',
     wet: 'Trails wet',
     muddy: 'Trails muddy',
+};
+
+// A window starting within this is "now"
+const SOON = 1000 * 60 * 10;
+
+// "Good to ride until dark", "Best to ride 14:00–16:30", "Tomorrow, ride from 10:00 until dark"
+const rideLabel = ({ tomorrow, window }: RideOutlook, now: Date): string => {
+    if (!window) {
+        return tomorrow ? 'No dry spell to ride tomorrow' : 'No dry spell to ride before dark';
+    }
+
+    const start = formatTime(window.start);
+    const span = window.untilDark
+        ? `from ${start} until dark`
+        : `${start}–${formatTime(window.end)}`;
+
+    if (tomorrow) {
+        return `Tomorrow, ride ${span}`;
+    }
+
+    if (window.start.getTime() - now.getTime() < SOON) {
+        return window.untilDark
+            ? 'Good to ride until dark'
+            : `Good to ride until ${formatTime(window.end)}`;
+    }
+
+    return `Best to ride ${span}`;
 };
 
 @Component({
@@ -95,6 +129,13 @@ export class TvWeatherComponent {
         const forecast = this.forecast();
 
         return forecast ? TRAIL_LABELS[trailCondition(forecast.hourly, this.clock.now())] : '';
+    });
+
+    public readonly ride = computed(() => {
+        const forecast = this.forecast();
+        const now = this.clock.now();
+
+        return forecast ? rideLabel(rideOutlook(forecast.hourly, forecast.daily, now), now) : '';
     });
 
     public readonly pollen = computed(() =>

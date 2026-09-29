@@ -39,6 +39,24 @@ describe('WeatherStore', () => {
         expect(getForecast).toHaveBeenCalledTimes(2);
     });
 
+    it('should show the weather when the pollen API does not answer', () => {
+        getAirQuality.mockReturnValueOnce(throwError(() => new Error('timed out')));
+
+        const store = TestBed.inject(WeatherStore);
+        TestBed.tick();
+        vi.advanceTimersByTime(0);
+        expect(store.forecast()).toBe(forecastMock);
+        expect(store.airQuality()).toBeUndefined();
+
+        // The next time it answers, the pollen is back, and a later failure keeps it
+        vi.advanceTimersByTime(1000 * 60 * 5);
+        expect(store.airQuality()).toBe(airQualityMock);
+
+        getAirQuality.mockReturnValueOnce(throwError(() => new Error('timed out')));
+        vi.advanceTimersByTime(1000 * 60 * 5);
+        expect(store.airQuality()).toBe(airQualityMock);
+    });
+
     it('should keep polling after a failed request', () => {
         getForecast.mockReturnValueOnce(throwError(() => new Error('offline')));
 

@@ -1,7 +1,17 @@
 <time class="time">{{ time() }}</time>
 
-<div class="music">
-    <app-icon name="audio-lines" class="playing-icon" [class.active]="playing()" />
+<div class="music" [class.cover-tinted]="coverColor()" [style.--cover-color]="coverColor()">
+    @if (cover()) {
+        <img
+            class="cover"
+            [class.paused]="!playing()"
+            [src]="cover()"
+            crossorigin="anonymous"
+            alt=""
+        />
+    } @else {
+        <app-icon name="audio-lines" class="playing-icon" [class.active]="playing()" />
+    }
     <div>
         @if (song()) {
             <p class="song">{{ song() }}</p>

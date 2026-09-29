@@ -9,6 +9,7 @@ export class SpotifyState extends AbstractModel {
         public title: string,
         public artist: string,
         public album: string,
+        public cover = '', // URL of the album cover
     ) {
         super();
     }

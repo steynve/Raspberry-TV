@@ -15,15 +15,15 @@ describe('SpotifyStore', () => {
 
     const playing = new SpotifyState(1, true, true, 'Everlong', 'Foo Fighters', '');
     const getState = vi.fn(() => of(playing));
-    const pause = vi.fn(() => of('paused'));
+    const disconnect = vi.fn(() => of('disconnected'));
 
     beforeEach(() => {
         vi.useFakeTimers();
         getState.mockClear();
         getState.mockImplementation(() => of(playing));
-        pause.mockClear();
+        disconnect.mockClear();
         TestBed.configureTestingModule({
-            providers: [{ provide: SpotifyService, useValue: { getState, pause } }],
+            providers: [{ provide: SpotifyService, useValue: { getState, disconnect } }],
         });
     });
 
@@ -86,6 +86,22 @@ describe('SpotifyStore', () => {
         expect(getState).toHaveBeenCalledTimes(2);
     });
 
+    it('should ask for the smaller cover, and only while something is loaded', () => {
+        const cover = 'https://i.scdn.co/image/ab67616d0000b273abc';
+        getState.mockImplementation(() =>
+            of(new SpotifyState(1, true, true, 'Everlong', 'Foo Fighters', '', cover)),
+        );
+        const store = TestBed.inject(SpotifyStore);
+        settle();
+        expect(store.cover()).toBe('https://i.scdn.co/image/ab67616d00001e02abc');
+
+        getState.mockImplementation(() =>
+            of(new SpotifyState(2, false, false, 'Everlong', 'Foo Fighters', '', cover)),
+        );
+        store.refresh();
+        expect(store.cover()).toBe('');
+    });
+
     it('should stay empty when Spotify was not used since the Pi started', () => {
         getState.mockImplementation(() => throwError(() => new Error('404')));
         const store = TestBed.inject(SpotifyStore);
@@ -94,18 +110,44 @@ describe('SpotifyStore', () => {
         expect(store.state()).toBeUndefined();
     });
 
-    it('should pause Spotify when the TV turns off, and read it again when the TV comes back', () => {
+    it('should let go of the phone when the TV turns off, and read it again when the TV comes back', () => {
         const store = TestBed.inject(SpotifyStore);
         const power = TestBed.inject(PowerStore);
         settle();
 
         power.sleep();
         settle();
-        expect(pause).toHaveBeenCalled();
+        expect(disconnect).toHaveBeenCalled();
 
         power.wake();
         settle();
         expect(getState).toHaveBeenCalledTimes(2);
         expect(store.state()).toBe(playing);
+    });
+
+    it('should also let go of a phone that is connected but paused', () => {
+        getState.mockImplementation(() =>
+            of(new SpotifyState(1, true, false, 'Everlong', 'Foo Fighters', '')),
+        );
+        TestBed.inject(SpotifyStore);
+        const power = TestBed.inject(PowerStore);
+        settle();
+
+        power.sleep();
+        settle();
+
+        expect(disconnect).toHaveBeenCalled();
+    });
+
+    it('should leave Spotify alone when no phone is connected', () => {
+        getState.mockImplementation(() => of(new SpotifyState(1, false, false, '', '', '')));
+        TestBed.inject(SpotifyStore);
+        const power = TestBed.inject(PowerStore);
+        settle();
+
+        power.sleep();
+        settle();
+
+        expect(disconnect).not.toHaveBeenCalled();
     });
 });

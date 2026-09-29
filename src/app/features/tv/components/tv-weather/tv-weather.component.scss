@@ -20,7 +20,7 @@
 .now-main {
     display: flex;
     align-items: center;
-    gap: 1.25rem;
+    gap: 1rem;
 }
 
 .now-temperature {
@@ -49,7 +49,7 @@
 .pollen {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1.75rem;
+    gap: 0.5rem 1.5rem;
     font-size: var(--text-body);
     color: var(--fg-muted);
 
@@ -64,7 +64,7 @@
 .pollen {
     font-size: var(--text-meta);
     margin-block-start: auto;
-    padding-block-start: 1rem;
+    padding-block-start: var(--widget-gap);
     border-block-start: 1px solid var(--glass-edge);
 }
 

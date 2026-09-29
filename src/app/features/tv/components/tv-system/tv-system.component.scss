@@ -22,7 +22,7 @@
     }
 
     dd {
-        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
         text-align: end;
         color: var(--fg-muted);
     }

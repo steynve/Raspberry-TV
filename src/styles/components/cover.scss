@@ -1,0 +1,25 @@
+// An album cover, in the now-playing widget and on the idle screen. Sized with --cover-size.
+.cover {
+    flex: none;
+    inline-size: var(--cover-size, 6rem);
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    // Holds the space while the cover loads, so the text beside it doesn't jump
+    background-color: var(--glass-highlight);
+    box-shadow:
+        0 0.5rem 1.5rem oklch(0 0 0 / 0.3),
+        inset 0 0 0 1px var(--glass-edge);
+    transition: opacity 0.3s var(--ease-out);
+
+    // Opacity only, which the Pi's GPU handles without repainting
+    &.paused {
+        opacity: 0.45;
+    }
+}
+
+// The accent takes the hue of the album cover while it's showing, the same way it takes the photo's
+// elsewhere (see tv-wallpaper.component.scss). Set --cover-color with the class.
+.cover-tinted {
+    --accent: oklch(from var(--cover-color) 0.86 min(c * 1.5, 0.09) h);
+}

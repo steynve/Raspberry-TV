@@ -37,11 +37,11 @@ describe('SpotifyService', () => {
         expect(result).toEqual(new SpotifyState(1, true, true, 'Everlong', 'Foo Fighters', ''));
     });
 
-    it('should pause through the control on the Pi', () => {
-        service.pause().subscribe();
+    it('should disconnect through the control on the Pi', () => {
+        service.disconnect().subscribe();
 
-        const request = httpMock.expectOne('/control/spotify-pause');
+        const request = httpMock.expectOne('/control/spotify-disconnect');
         expect(request.request.method).toBe('POST');
-        request.flush('paused');
+        request.flush('disconnected');
     });
 });

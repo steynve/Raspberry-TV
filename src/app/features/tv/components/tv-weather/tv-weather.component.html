@@ -1,5 +1,5 @@
 @if (forecast(); as forecast) {
-    <section class="widget now">
+    <section class="widget now" data-path="~/weather">
         <h2 class="widget-title">Now</h2>
 
         <div class="now-main">
@@ -14,7 +14,8 @@
 
         <ul class="now-details">
             <li><app-icon name="wind" /> {{ wind() }}</li>
-            <li><app-icon name="bike" /> {{ trail() }}</li>
+            <li><app-icon name="footprints" /> {{ trail() }}</li>
+            <li><app-icon name="bike" /> {{ ride() }}</li>
             @if (uv(); as uv) {
                 <li class="now-uv"><app-icon name="sun" /> UV {{ uv }} · wear sunscreen</li>
             }
@@ -42,8 +43,8 @@
 
     <!-- Only takes the centre of the screen when there is rain to show -->
     @if (rainExpected()) {
-        <app-tv-rain class="widget rain" [slots]="rain()" />
+        <app-tv-rain class="widget rain" data-path="~/weather/rain" [slots]="rain()" />
     }
 
-    <app-tv-forecast class="widget week" [daily]="forecast.daily" />
+    <app-tv-forecast class="widget week" data-path="~/weather/week" [daily]="forecast.daily" />
 }

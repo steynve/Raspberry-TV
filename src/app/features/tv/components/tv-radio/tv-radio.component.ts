@@ -1,4 +1,4 @@
-import { distinctUntilChanged, skip, Subject } from 'rxjs';
+import { catchError, distinctUntilChanged, EMPTY, skip, Subject } from 'rxjs';
 import { DNB } from '@data/models/dnb.model';
 import { Kink } from '@data/models/kink.model';
 import { Flux } from '@data/models/flux.model';
@@ -6,7 +6,7 @@ import { RadioService } from '@data/services/radio.service';
 import { PowerStore } from '@data/stores/power.store';
 import { SpotifyStore } from '@data/stores/spotify.store';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
+import { Digit, isDigit, KeyboardEventKey, YELLOW } from '@data/models/keyboard-event-key.type';
 import { IconComponent } from '@shared/components/icon/icon.component';
 import { formatTime } from '@data/utils/time';
 import { TvSystemComponent } from '../tv-system/tv-system.component';
@@ -31,6 +31,9 @@ export interface PlayedSong {
 }
 
 const HISTORY_LENGTH = 5;
+
+// Like a TV: after the first digit, how long to wait for a second one
+const NEXT_DIGIT_WAIT = 1500;
 
 @Component({
     selector: 'app-tv-radio',
@@ -62,6 +65,17 @@ export class TvRadioComponent implements OnInit {
     public readonly blocked = signal(false);
     public readonly history = signal<PlayedSong[]>([]);
     private current: PlayedSong | undefined;
+    private previousChannelIndex: number | undefined;
+
+    // The station number being typed on the remote, and the station it would pick
+    public readonly typedNumber = signal('');
+    public readonly typedChannel = computed(() => {
+        const typed = this.typedNumber();
+
+        return typed ? this.radioChannels[Number(typed) - 1] : undefined;
+    });
+
+    private typingTimer: ReturnType<typeof setTimeout> | undefined;
 
     public readonly nowPlayingChannel = computed(
         () => this.radioChannels[this.nowPlayingChannelIndex()],
@@ -76,6 +90,15 @@ export class TvRadioComponent implements OnInit {
     // The playing indicator: the stream on this page, or Spotify on the Pi
     public readonly isPlaying = computed(() =>
         this.isSpotify() ? !!this.spotify.state()?.playing : this.playing(),
+    );
+
+    // Only Spotify has covers, the stations' APIs don't
+    public readonly nowPlayingCover = computed(() =>
+        this.isSpotify() ? this.spotify.cover() : '',
+    );
+
+    public readonly nowPlayingCoverColor = computed(() =>
+        this.isSpotify() ? this.spotify.coverColor() : undefined,
     );
 
     public readonly nowPlayingSong = computed(() => {
@@ -128,24 +151,54 @@ export class TvRadioComponent implements OnInit {
         afterNextRender(() => this.startRadio());
 
         // Nobody hears HDMI audio while the TV is off or on another input: drop the stream then,
-        // and pick it up again when the TV comes back
+        // and pick it up again when the TV comes back. Spotify lets go of the phone then (see
+        // SpotifyStore), so the TV comes back on the first station.
         this.power.awake$
             .pipe(distinctUntilChanged(), skip(1), takeUntilDestroyed())
-            .subscribe((awake) => (awake ? this.startRadio() : this.stopRadio()));
+            .subscribe((awake) => {
+                if (awake) {
+                    this.startRadio();
+                    return;
+                }
 
-        // Casting from the Spotify app takes over from the radio, like switching to a channel
+                this.leaveSpotify();
+                this.stopRadio();
+            });
+
+        this.destroyRef.onDestroy(() => clearTimeout(this.typingTimer));
+
+        // Casting from the Spotify app takes over from the radio, like switching to a channel. Also
+        // while the TV is off: when casting turns it on (see pi/spotify-event.py), Spotify is
+        // already the channel and the radio stays quiet.
         toObservable(this.spotify.state)
             .pipe(takeUntilDestroyed())
             .subscribe((state) => {
-                if (state?.playing && !this.isSpotify()) {
-                    this.nowPlaying.set(undefined);
-                    this.nowPlayingChannelIndex.set(this.spotifyChannelIndex);
-                    this.selectedChannelIndex.set(this.spotifyChannelIndex);
-                    this.stopRadio();
+                if (state?.playing) {
+                    this.switchToSpotify();
                 }
 
                 this.recordSong();
             });
+    }
+
+    // Spotify has let go of the phone (or is about to): back to the first station, which plays
+    // when the TV or the radio comes back
+    public leaveSpotify(): void {
+        if (!this.isSpotify()) return;
+
+        this.nowPlaying.set(undefined);
+        this.nowPlayingChannelIndex.set(0);
+        this.selectedChannelIndex.set(0);
+    }
+
+    public switchToSpotify(): void {
+        if (this.isSpotify()) return;
+
+        this.previousChannelIndex = this.nowPlayingChannelIndex();
+        this.nowPlaying.set(undefined);
+        this.nowPlayingChannelIndex.set(this.spotifyChannelIndex);
+        this.selectedChannelIndex.set(this.spotifyChannelIndex);
+        this.stopRadio();
     }
 
     public startRadio(): void {
@@ -189,7 +242,11 @@ export class TvRadioComponent implements OnInit {
     public getNowPlaying(): void {
         this.radioService
             .getNowPlaying(this.nowPlayingChannel())
-            .pipe(takeUntilDestroyed(this.destroyRef))
+            // A station's API that doesn't answer keeps the last song on screen
+            .pipe(
+                catchError(() => EMPTY),
+                takeUntilDestroyed(this.destroyRef),
+            )
             .subscribe((response) => {
                 this.nowPlaying.set(response);
                 this.recordSong();
@@ -228,22 +285,84 @@ export class TvRadioComponent implements OnInit {
     }
 
     public setNowPlayingChannel(): void {
+        if (this.selectedChannelIndex() !== this.nowPlayingChannelIndex()) {
+            this.previousChannelIndex = this.nowPlayingChannelIndex();
+        }
+
         this.nowPlaying.set(undefined);
         this.nowPlayingChannelIndex.set(this.selectedChannelIndex());
 
-        // A radio station takes over from Spotify, so they never play at the same time
-        if (!this.isSpotify() && this.spotify.state()?.playing) {
-            this.spotify.pause();
+        // A radio station takes over from Spotify: let go of the phone, like a Bluetooth speaker
+        // that's switched off, so the two never play at the same time
+        if (!this.isSpotify() && this.spotify.state()?.active) {
+            this.spotify.disconnect();
         }
 
         this.startRadio();
         this.getNowPlaying();
     }
 
+    public playChannel(index: number): void {
+        this.setSelectedChannel(index);
+        this.setNowPlayingChannel();
+    }
+
+    // Channel up and down, round the list
+    public stepChannel(step: number): void {
+        const count = this.radioChannels.length;
+
+        this.playChannel((this.nowPlayingChannelIndex() + step + count) % count);
+    }
+
+    // Back and forth between the last two stations, like the previous channel button on a TV
+    public playPreviousChannel(): void {
+        if (this.previousChannelIndex !== undefined) {
+            this.playChannel(this.previousChannelIndex);
+        }
+    }
+
+    // Stations are numbered from 1. A digit that can't start a longer number switches right away
+    // (with 14 stations: 2 to 9, or 1 then 4); otherwise the TV waits a moment for the next one.
+    public typeDigit(digit: Digit): void {
+        clearTimeout(this.typingTimer);
+
+        const count = this.radioChannels.length;
+        let typed = this.typedNumber() + digit;
+
+        // Past the last station, the new digit starts a new number
+        if (Number(typed) > count) typed = digit;
+
+        if (Number(typed) < 1) {
+            this.typedNumber.set('');
+            return;
+        }
+
+        this.typedNumber.set(typed);
+
+        if (Number(typed) * 10 > count) {
+            this.playTypedChannel();
+        } else {
+            this.typingTimer = setTimeout(() => this.playTypedChannel(), NEXT_DIGIT_WAIT);
+        }
+    }
+
+    private playTypedChannel(): void {
+        const index = Number(this.typedNumber()) - 1;
+
+        this.typedNumber.set('');
+        this.playChannel(index);
+    }
+
     public listenForKeyDown(): void {
         this.keyDownSubject()
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe((key: KeyboardEventKey) => {
+                // Straight to a station, with or without the channel list open
+                if (isDigit(key)) this.typeDigit(key);
+                if (key === 'PageUp') this.stepChannel(1);
+                if (key === 'PageDown') this.stepChannel(-1);
+                if (key === YELLOW) this.playPreviousChannel();
+
                 if (!this.overlay()) {
                     return;
                 }

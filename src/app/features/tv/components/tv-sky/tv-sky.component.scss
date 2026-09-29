@@ -7,6 +7,30 @@
     text-shadow: var(--shadow-text);
 }
 
+.sky-notes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin-block-start: 0.5rem;
+    font-size: var(--text-meta);
+    color: var(--fg-muted);
+    text-shadow: var(--shadow-text);
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .sunset app-icon {
+        color: var(--warm);
+    }
+
+    .stars app-icon {
+        color: var(--accent);
+    }
+}
+
 .sun {
     color: var(--accent);
 

@@ -23,7 +23,8 @@ ExecStart=/usr/local/bin/spotifyd --no-daemon \
     --on-song-change-hook /usr/local/bin/raspberry-spotify \
     --cache-path /home/pipi/.cache/spotifyd \
     --no-audio-cache
-# The kiosk's PulseAudio and D-Bus start with its login, so keep trying until they're there
+# The kiosk's PulseAudio and D-Bus start with its login, so keep trying until they're there.
+# Also how spotify-disconnect.sh lets go of the phone: it quits spotifyd, and this starts it again.
 Restart=always
 RestartSec=5
 

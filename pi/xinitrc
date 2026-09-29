@@ -6,9 +6,11 @@ xset -dpms
 xset s off
 xset s noblank
 
-# The Pi signals the app with F13 (wake), F14 (sleep) and F15 (Spotify changed). They have no key in
-# the default keymap, and Chromium can't name a key without one, so give them their standard keycodes.
-xmodmap -e "keycode 191 = F13" -e "keycode 192 = F14" -e "keycode 193 = F15"
+# The Pi signals the app with F13 (wake), F14 (sleep) and F15 (Spotify changed), and the remote's
+# colour buttons are F16 to F19 (see hdmicec.sh). They have no key in the default keymap, and
+# Chromium can't name a key without one, so give them their standard keycodes.
+xmodmap -e "keycode 191 = F13" -e "keycode 192 = F14" -e "keycode 193 = F15" \
+    -e "keycode 194 = F16" -e "keycode 195 = F17" -e "keycode 196 = F18" -e "keycode 197 = F19"
 
 # Chromium is called chromium-browser on Raspberry Pi OS 11 and chromium from 12 on
 BROWSER=$(command -v chromium-browser || command -v chromium)

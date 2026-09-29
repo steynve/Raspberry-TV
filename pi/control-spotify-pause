@@ -1,6 +1,0 @@
-#!/bin/sh
-# POST /control/spotify-pause: the TV app pauses Spotify when a radio station takes over, or
-# when the TV turns off. Only the Pi itself may call it, see lighttpd.conf.
-# Installed in /usr/local/lib/raspberry/control/ by setup.sh.
-printf 'Content-Type: text/plain\r\n\r\n'
-sudo -n -u pipi /usr/local/bin/raspberry-spotify-pause > /dev/null 2>&1 && echo paused || echo "nothing to pause"

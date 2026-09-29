@@ -27,14 +27,18 @@ if [ -n "$missing" ]; then
 fi
 
 # The kiosk session, restarted by deploy.sh when it changes
-for file in bash_profile xinitrc asoundrc; do
+for file in xinitrc asoundrc; do
     if install_file "$file" "$HOME_DIR/.$file" 644 "$USER_NAME"; then
         touch "$RESTART_MARKER"
     fi
 done
 
-# The remote bridge: when it changes, stop the old one so the kiosk restart starts the new one
-if install_file hdmicec.sh /usr/local/bin/raspberry-cec 755; then
+# The remote bridge, started by bash_profile: when either changes, stop the old one so the kiosk
+# restart starts the new one
+cec_changed=
+install_file bash_profile "$HOME_DIR/.bash_profile" 644 "$USER_NAME" && cec_changed=1
+install_file hdmicec.sh /usr/local/bin/raspberry-cec 755 && cec_changed=1
+if [ -n "$cec_changed" ]; then
     pkill -x cec-client || true
     touch "$RESTART_MARKER"
 fi
@@ -94,8 +98,10 @@ fi
 # spotifyd runs the hook fresh on every event, so a new hook needs no restart (which would cut off
 # whoever is listening)
 install_file spotify-event.py /usr/local/bin/raspberry-spotify 755 || true
-install_file spotify-pause.sh /usr/local/bin/raspberry-spotify-pause 755 || true
-install_file control-spotify-pause /usr/local/lib/raspberry/control/spotify-pause 755 || true
+install_file spotify-disconnect.sh /usr/local/bin/raspberry-spotify-disconnect 755 || true
+install_file control-spotify-disconnect /usr/local/lib/raspberry/control/spotify-disconnect 755 || true
+# Replaced by the disconnect: the app no longer only pauses
+rm -f /usr/local/bin/raspberry-spotify-pause /usr/local/lib/raspberry/control/spotify-pause
 if install_file spotifyd.service /etc/systemd/system/spotifyd.service 644; then
     systemctl daemon-reload
     spotify_changed=1

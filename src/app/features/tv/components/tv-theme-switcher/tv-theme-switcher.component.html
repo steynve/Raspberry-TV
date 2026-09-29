@@ -1,0 +1,8 @@
+<ul class="themes">
+    @for (option of themes; track option.theme) {
+        <li class="option" [class.current]="option.theme === theme()">
+            <span class="button" [attr.data-key]="option.key"></span>
+            {{ option.name }}
+        </li>
+    }
+</ul>

@@ -29,6 +29,10 @@ export const forecastHourlyMock = new OpenMeteoForecastHourly(
     [0, 0.5, 0.5, 0.5],
     [100, 80, 10, 20],
     [40.4, 32.6, 28.1, 20],
+    [90, 10, 0, 0],
+    [100, 60, 5, 10],
+    [80, 40, 0, 10],
+    [20, 30, 10, 5],
 );
 
 // 12 °C, partly cloudy, wind from the south-west at 14 km/h

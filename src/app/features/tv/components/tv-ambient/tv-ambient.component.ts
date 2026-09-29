@@ -25,6 +25,8 @@ export class TvAmbientComponent {
     public readonly artist = input('');
     public readonly station = input(''); // HTML, see RadioChannel.visibleName
     public readonly playing = input(false);
+    public readonly cover = input('');
+    public readonly coverColor = input<string>();
 
     public readonly time = computed(() =>
         this.clock.now().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),

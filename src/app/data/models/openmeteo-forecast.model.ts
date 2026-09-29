@@ -32,6 +32,10 @@ export class OpenMeteoForecast extends AbstractModel {
             hourly.et0_fao_evapotranspiration,
             hourly.cloud_cover,
             hourly.wind_gusts_10m,
+            hourly.precipitation_probability,
+            hourly.cloud_cover_low,
+            hourly.cloud_cover_mid,
+            hourly.cloud_cover_high,
         );
     }
 }
