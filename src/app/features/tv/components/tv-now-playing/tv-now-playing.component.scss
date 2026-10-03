@@ -1,0 +1,87 @@
+// Fixed width, so it never jumps with the length of a song
+.now-playing {
+    inline-size: var(--radio-width);
+}
+
+.station {
+    color: var(--fg-muted);
+}
+
+// A station number being typed
+.channel-number {
+    padding: 0.05em 0.35em;
+    font-variant-numeric: tabular-nums;
+    border-radius: 0.35em;
+    box-shadow: inset 0 0 0 1px var(--glass-edge);
+    letter-spacing: 0;
+}
+
+.typing {
+    color: var(--accent);
+}
+
+.playing-icon {
+    color: var(--fg-subtle);
+
+    &.active {
+        color: var(--accent);
+    }
+}
+
+.track {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.cover {
+    --cover-size: 7.5rem;
+}
+
+.song {
+    font-size: var(--text-title);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+.artist {
+    font-size: var(--text-body);
+    color: var(--fg-muted);
+}
+
+.hint {
+    font-size: var(--text-meta);
+    color: var(--fg-muted);
+}
+
+.blocked {
+    font-size: var(--text-meta);
+    color: var(--accent);
+}
+
+// How far the Spotify song is. The bar stretches on its own layer (scaleX), so moving it doesn't
+// repaint anything.
+.progress {
+    block-size: 0.25rem;
+    border-radius: 0.125rem;
+    background-color: oklch(1 0 0 / 0.14);
+    overflow: hidden;
+}
+
+.progress-bar {
+    display: block;
+    block-size: 100%;
+    background-color: var(--accent);
+    transform-origin: left;
+    will-change: transform;
+}
+
+.progress.paused .progress-bar {
+    background-color: var(--fg-subtle);
+}

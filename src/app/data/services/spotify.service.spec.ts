@@ -71,6 +71,23 @@ describe('SpotifyService', () => {
         expect(FakeWebSocket.last.close).toHaveBeenCalled();
     });
 
+    it('should list the playlists, without the ones Spotify no longer serves', () => {
+        let names: string[] = [];
+        service.getPlaylists().subscribe((playlists) => (names = playlists.map((p) => p.name)));
+
+        httpMock
+            .expectOne((req) => req.url === 'http://localhost:3678/library/playlists')
+            .flush({
+                items: [
+                    { uri: 'spotify:playlist:rock', name: 'Rock', length: 41 },
+                    { uri: 'spotify:playlist:37i9dQZF1EYk', name: '', length: 0 },
+                    { uri: 'spotify:playlist:empty', name: 'Empty', length: 0 },
+                ],
+            });
+
+        expect(names).toEqual(['Rock']);
+    });
+
     it('should set the volume of the connection', () => {
         service.setVolume(100).subscribe();
 

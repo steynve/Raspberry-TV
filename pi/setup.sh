@@ -19,15 +19,41 @@ install_file() {
 }
 
 # Everything the kiosk needs, on a fresh Raspberry Pi OS Lite too
-packages=(xserver-xorg xinit x11-xserver-utils cec-utils xdotool lighttpd rsync alsa-utils pulseaudio)
+packages=(xserver-xorg xinit x11-xserver-utils cec-utils xdotool lighttpd rsync alsa-utils pulseaudio
+    unattended-upgrades)
 # Raspberry Pi's Chromium is chromium-browser on Raspberry Pi OS 11 and chromium from 12 on. Not
 # by which one exists: newer repositories still list an old chromium-browser build.
 . /etc/os-release
 if [ "$VERSION_ID" = 11 ]; then packages+=(chromium-browser); else packages+=(chromium); fi
-missing=$(dpkg-query -W -f='${Package} ${Status}\n' "${packages[@]}" 2>&1 | grep -v "install ok installed" | cut -d' ' -f1 || true)
-if [ -n "$missing" ]; then
+missing=()
+for package in "${packages[@]}"; do
+    dpkg-query -W -f='${Status}' "$package" 2> /dev/null | grep -q "install ok installed" || missing+=("$package")
+done
+if [ ${#missing[@]} -gt 0 ]; then
     apt-get update
-    apt-get install -y --no-install-recommends $missing
+    apt-get install -y --no-install-recommends "${missing[@]}"
+fi
+
+# Debian's security updates install themselves, see apt-unattended.conf
+install_file apt-unattended.conf /etc/apt/apt.conf.d/52raspberry-unattended-upgrades 644 || true
+
+# Raspberry Pi Connect (remote access through raspberrypi.com) comes with Raspberry Pi OS 13: the
+# kiosk doesn't use it
+if [[ $(dpkg-query -W -f='${Status}' rpi-connect-lite 2> /dev/null) == "install ok installed" ]]; then
+    apt-get purge -y -qq rpi-connect-lite
+    apt-get autoremove -y -qq
+    echo "Removed Raspberry Pi Connect"
+fi
+
+# Raspberry Pi OS 13 sets itself up on its first boot with cloud-init, from user-data and
+# network-config on the boot partition (see the README). After that cloud-init has nothing left to
+# do but take 6 seconds of every boot, and those files hold the Wi-Fi key and the password hash,
+# readable by anyone with the stick. The Wi-Fi itself stays: netplan keeps its own copy.
+if [ -d /etc/cloud ] && [ ! -f /etc/cloud/cloud-init.disabled ] &&
+    [[ $(cloud-init status 2> /dev/null) == *"status: done"* ]]; then
+    touch /etc/cloud/cloud-init.disabled
+    rm -f /boot/firmware/user-data /boot/firmware/network-config
+    echo "Switched cloud-init off, the first boot is done"
 fi
 
 # The kiosk session, restarted by deploy.sh when it changes
@@ -103,7 +129,7 @@ AVAHI_CONF=/etc/avahi/avahi-daemon.conf
 if grep -q "^#\?use-ipv6=yes" "$AVAHI_CONF"; then
     sed -i 's/^#\?use-ipv6=yes/use-ipv6=no/' "$AVAHI_CONF"
     systemctl restart avahi-daemon
-    systemctl try-restart go-librespot
+    systemctl try-restart go-librespot 2> /dev/null || true # not installed yet on a fresh Pi
     echo "Switched mDNS over IPv6 off"
 fi
 

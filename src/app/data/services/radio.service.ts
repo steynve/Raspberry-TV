@@ -22,6 +22,9 @@ export class RadioService {
     private readonly http = inject(HttpClient);
 
     public readonly radioChannels: RadioChannel[] = [
+        // Spotify on the Pi (see SpotifyStore), not a stream here. First, as it's what plays most;
+        // the TV still starts on the first station after it, see RadioStore.
+        { file: '', visibleName: 'Spotify', apiSrc: 'SPOTIFY', apiRef: '' },
         {
             file: 'http://playerservices.streamtheworld.com/api/livestream-redirect/KINK.mp3',
             visibleName: '<i>K</i>INK',
@@ -100,8 +103,6 @@ export class RadioService {
             apiSrc: 'NONE',
             apiRef: '',
         },
-        // Played from the Spotify app through Spotify Connect on the Pi, not as a stream here
-        { file: '', visibleName: 'Spotify', apiSrc: 'SPOTIFY', apiRef: '' },
     ];
 
     // Nothing for a station without an API, or Spotify, which the Pi reports itself

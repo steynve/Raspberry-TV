@@ -4,7 +4,9 @@ import { NowPlaying, RadioChannel } from '@data/models/radio-channel.model';
 export class RadioServiceMock {
     public nowPlaying: NowPlaying = { song: 'kink_song', artist: 'kink_artist' };
 
+    // Like the real list: Spotify first
     public radioChannels: RadioChannel[] = [
+        { file: '', visibleName: 'Spotify', apiSrc: 'SPOTIFY', apiRef: '' },
         {
             file: 'http://website.com/api/KINK.mp3',
             visibleName: 'KINK',
@@ -24,7 +26,6 @@ export class RadioServiceMock {
             apiSrc: 'NONE',
             apiRef: '',
         },
-        { file: '', visibleName: 'Spotify', apiSrc: 'SPOTIFY', apiRef: '' },
     ];
 
     public getNowPlaying(): Observable<NowPlaying> {

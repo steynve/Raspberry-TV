@@ -3,22 +3,14 @@
         <div class="tv-clock">
             <app-tv-clock />
             <app-tv-sky />
+            <app-tv-waste />
         </div>
         <div class="tv-radio">
-            <app-tv-radio [keyDownSubject]="keyDownSubject" [overlay]="overlay()" />
+            <app-tv-now-playing />
             <app-tv-pi-alert />
         </div>
         <app-tv-weather class="tv-weather" />
-
-        @let nowPlaying = radio();
-        <app-tv-ambient
-            [visible]="idle()"
-            [song]="nowPlaying?.nowPlayingSong() ?? ''"
-            [artist]="nowPlaying?.nowPlayingArtist() ?? ''"
-            [station]="nowPlaying?.nowPlayingChannel().visibleName ?? ''"
-            [playing]="nowPlaying?.isPlaying() ?? false"
-            [cover]="nowPlaying?.nowPlayingCover() ?? ''"
-            [coverColor]="nowPlaying?.nowPlayingCoverColor()"
-        />
+        <app-tv-channels [open]="overlay()" (closed)="overlay.set(false)" />
+        <app-tv-ambient [visible]="idle()" />
     </main>
 </app-tv-wallpaper>

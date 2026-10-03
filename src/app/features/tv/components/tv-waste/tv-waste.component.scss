@@ -1,0 +1,20 @@
+// One line per thing to do, like the sky's notes under the clock
+:host {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+// In the warm colour of a reminder
+.waste {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-meta);
+    color: var(--fg-muted);
+    text-shadow: var(--shadow-text);
+
+    app-icon {
+        color: var(--warm);
+    }
+}

@@ -1,6 +1,6 @@
-import { defer, Observable, of, Subject } from 'rxjs';
+import { defer, Observable, of, Subject, throwError } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
-import { SpotifyStore } from './spotify.store';
+import { positionNow, SpotifyStore } from './spotify.store';
 import { PowerStore } from './power.store';
 import { TvService } from '@data/services/tv.service';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -12,7 +12,18 @@ describe('SpotifyStore', () => {
         artist_names: ['Foo Fighters'],
         album_name: 'The Colour and the Shape',
         album_cover_url: 'https://i.scdn.co/image/ab67616d0000b273abc',
+        position: 60000,
+        duration: 250000,
     };
+
+    const signedIn = (overrides: Partial<SpotifyStatus> = {}): SpotifyStatus => ({
+        username: 'steyn',
+        context_uri: 'spotify:playlist:rock',
+        paused: false,
+        stopped: false,
+        track: everlong,
+        ...overrides,
+    });
 
     // Each connection to go-librespot is a subject of its own, so a test can close it
     let connections: Subject<SpotifyEvent>[];
@@ -21,6 +32,14 @@ describe('SpotifyStore', () => {
     const setVolume = vi.fn(() => of(null));
     const stop = vi.fn(() => of(null));
     const turnOn = vi.fn(() => of('on'));
+    const getPlaylists = vi.fn(() =>
+        of([{ uri: 'spotify:playlist:rock', name: 'Rock', length: 12 }]),
+    );
+    const getPairing = vi.fn(() => of({ url: 'https://www.spotify.com/pair', code: 'ABCD' }));
+    const play = vi.fn(() => of(null));
+    const playPause = vi.fn(() => of(null));
+    const next = vi.fn(() => of(null));
+    const previous = vi.fn(() => of(null));
 
     const connection = (): Subject<SpotifyEvent> => connections[connections.length - 1];
     const send = (event: SpotifyEvent): void => connection().next(event);
@@ -40,9 +59,12 @@ describe('SpotifyStore', () => {
 
     beforeEach(() => {
         vi.useFakeTimers();
+        vi.setSystemTime(1000000);
         connections = [];
         status = null;
-        [getStatus, setVolume, stop, turnOn].forEach((spy) => spy.mockClear());
+        [getStatus, setVolume, stop, turnOn, getPlaylists, getPairing, play].forEach((spy) =>
+            spy.mockClear(),
+        );
 
         TestBed.configureTestingModule({
             providers: [
@@ -52,6 +74,12 @@ describe('SpotifyStore', () => {
                         getStatus,
                         setVolume,
                         stop,
+                        getPlaylists,
+                        getPairing,
+                        play,
+                        playPause,
+                        next,
+                        previous,
                         // Like the real one: every subscription is a new connection
                         events: (): Observable<SpotifyEvent> =>
                             defer(() => {
@@ -68,7 +96,7 @@ describe('SpotifyStore', () => {
     afterEach(() => vi.useRealTimers());
 
     it('should start from the status when it connects', () => {
-        status = { paused: false, stopped: false, track: everlong };
+        status = signedIn();
         const store = connect();
 
         expect(store.state()).toEqual({
@@ -78,6 +106,10 @@ describe('SpotifyStore', () => {
             artist: 'Foo Fighters',
             album: 'The Colour and the Shape',
             cover: 'https://i.scdn.co/image/ab67616d0000b273abc',
+            context: 'spotify:playlist:rock',
+            position: 60000,
+            positionAt: 1000000,
+            duration: 250000,
         });
         expect(store.cover()).toBe('https://i.scdn.co/image/ab67616d00001e02abc');
     });
@@ -87,6 +119,99 @@ describe('SpotifyStore', () => {
 
         expect(store.state().active).toBe(false);
         expect(store.cover()).toBe('');
+    });
+
+    it('should be inactive while signed in with nothing loaded', () => {
+        status = signedIn({ track: null, context_uri: null, stopped: true });
+        const store = connect();
+
+        expect(store.state().active).toBe(false);
+    });
+
+    describe('position', () => {
+        it('should run on while playing, and stand still while paused', () => {
+            const store = connect();
+            send({ type: 'metadata', data: everlong });
+            send({ type: 'playing', data: { context_uri: 'spotify:playlist:rock' } });
+
+            vi.advanceTimersByTime(10000);
+            expect(positionNow(store.state(), Date.now())).toBe(70000);
+
+            send({ type: 'paused', data: { context_uri: 'spotify:playlist:rock' } });
+            vi.advanceTimersByTime(10000);
+            expect(positionNow(store.state(), Date.now())).toBe(70000);
+
+            send({ type: 'playing', data: { context_uri: 'spotify:playlist:rock' } });
+            vi.advanceTimersByTime(5000);
+            expect(positionNow(store.state(), Date.now())).toBe(75000);
+        });
+
+        it('should jump with a seek', () => {
+            const store = connect();
+            send({ type: 'metadata', data: everlong });
+
+            send({ type: 'seek', data: { position: 200000, duration: 250000 } });
+
+            expect(positionNow(store.state(), Date.now())).toBe(200000);
+        });
+
+        it('should never pass the end of the song', () => {
+            const store = connect();
+            send({ type: 'metadata', data: everlong });
+            send({ type: 'playing', data: { context_uri: '' } });
+
+            vi.advanceTimersByTime(1000 * 60 * 10);
+
+            expect(positionNow(store.state(), Date.now())).toBe(250000);
+        });
+    });
+
+    describe('library', () => {
+        it('should load the playlists of the account', () => {
+            status = signedIn();
+            const store = connect();
+
+            store.loadLibrary();
+
+            expect(store.signedIn()).toBe(true);
+            expect(store.likedSongs()).toBe('spotify:user:steyn:collection');
+            expect(store.playlists().map((playlist) => playlist.name)).toEqual(['Rock']);
+            expect(getPairing).not.toHaveBeenCalled();
+        });
+
+        it('should show the code to link an account without one', () => {
+            const store = connect();
+
+            store.loadLibrary();
+
+            expect(store.signedIn()).toBe(false);
+            expect(store.pairing()?.code).toBe('ABCD');
+            expect(getPlaylists).not.toHaveBeenCalled();
+        });
+
+        it('should show the code while it waits for the account to be linked', () => {
+            const store = connect();
+            getStatus.mockReturnValueOnce(throwError(() => new Error('503')));
+
+            store.loadLibrary();
+
+            expect(store.signedIn()).toBe(false);
+            expect(store.pairing()?.code).toBe('ABCD');
+        });
+
+        it('should pass the remote on to Spotify', () => {
+            const store = connect();
+
+            store.play('spotify:playlist:rock');
+            store.playPause();
+            store.next();
+            store.previous();
+
+            expect(play).toHaveBeenCalledWith('spotify:playlist:rock');
+            expect(playPause).toHaveBeenCalled();
+            expect(next).toHaveBeenCalled();
+            expect(previous).toHaveBeenCalled();
+        });
     });
 
     it('should follow every change right away, without asking', () => {
@@ -161,7 +286,7 @@ describe('SpotifyStore', () => {
         const store = connect();
         connection().complete();
 
-        status = { paused: true, stopped: false, track: everlong };
+        status = signedIn({ paused: true });
         vi.advanceTimersByTime(5000);
         send({ type: 'open' });
         settle();

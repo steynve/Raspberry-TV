@@ -10,4 +10,6 @@ if (typeof window !== 'undefined') {
     window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
     window.HTMLMediaElement.prototype.pause = vi.fn();
     window.HTMLMediaElement.prototype.load = vi.fn();
+    // Not in jsdom: the channel list keeps its highlight in sight with it
+    window.Element.prototype.scrollIntoView = vi.fn();
 }

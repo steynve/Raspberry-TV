@@ -23,16 +23,27 @@ if ask "$mode" "Build a new version?"; then
     npm run build
 fi
 
+# Debian's security updates install themselves every night (see pi/apt-unattended.conf), the rest,
+# like Chromium and the kernel, only here
+if ask "$mode" "Update the Pi's software?"; then
+    pi "sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get full-upgrade -y -q \
+        -o Dpkg::Options::=--force-confold"
+    if pi "test -f /run/reboot-required"; then
+        echo "The update takes effect after a reboot"
+    fi
+fi
+
+# The setup first: on a fresh Pi it installs the web server (and rsync) the app goes into
+if ask "$mode" "Update the kiosk setup (pi/)?"; then
+    rsync -az --delete -e "ssh ${SSH_OPTIONS[*]}" pi/ "$PI:pi/"
+    pi "sudo ~/pi/setup.sh"
+fi
+
 if ask "$mode" "Deploy the app?"; then
     # Mirror the build into the web root, so no old files linger
     rsync -az --delete --no-owner --no-group \
         -e "ssh ${SSH_OPTIONS[*]}" --rsync-path="sudo rsync" \
         dist/raspberry/ "$PI:/var/www/html/"
-fi
-
-if ask "$mode" "Update the kiosk setup (pi/)?"; then
-    rsync -az --delete -e "ssh ${SSH_OPTIONS[*]}" pi/ "$PI:pi/"
-    pi "sudo ~/pi/setup.sh"
 fi
 
 if [ "$mode" != "--yes" ] && ask "" "Reboot the Pi?"; then

@@ -1,0 +1,48 @@
+<article
+    class="widget now-playing"
+    data-path="~/radio"
+    [class.cover-tinted]="radio.coverColor()"
+    [style.--cover-color]="radio.coverColor()"
+>
+    <h2 class="widget-title">
+        <app-icon name="audio-lines" class="playing-icon" [class.active]="radio.isPlaying()" />
+        @if (radio.typedNumber()) {
+            <!-- A station number being typed on a remote that sends numbers, or a keyboard -->
+            <span class="channel-number typing">{{ radio.typedNumber() }}</span>
+            <span
+                class="station station-name typing"
+                [innerHTML]="radio.typedChannel()?.visibleName"
+            ></span>
+        } @else {
+            <span class="station station-name" [innerHTML]="radio.channel().visibleName"></span>
+        }
+    </h2>
+    @if (radio.song()) {
+        <div class="track">
+            @if (radio.cover(); as cover) {
+                <img
+                    class="cover"
+                    [class.paused]="!radio.isPlaying()"
+                    [src]="cover"
+                    crossorigin="anonymous"
+                    alt=""
+                />
+            }
+            <div>
+                <p class="song">{{ radio.song() }}</p>
+                <p class="artist">{{ radio.artist() }}</p>
+            </div>
+        </div>
+    }
+    @if (progress() !== undefined) {
+        <div class="progress" [class.paused]="!radio.isPlaying()">
+            <span class="progress-bar" [style.transform]="'scaleX(' + progress() + ')'"></span>
+        </div>
+    }
+    @if (radio.isSpotify() && !radio.song()) {
+        <p class="hint">Press OK to pick a playlist, or cast from the Spotify app</p>
+    }
+    @if (radio.blocked()) {
+        <p class="blocked">Press any button to start the radio</p>
+    }
+</article>

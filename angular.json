@@ -32,7 +32,7 @@
                                 "input": "public"
                             },
                             {
-                                "glob": "{audio-lines,bike,cloud,cloud-drizzle,cloud-fog,cloud-hail,cloud-lightning,cloud-moon,cloud-moon-rain,cloud-rain,cloud-rain-wind,cloud-snow,cloud-sun,cloud-sun-rain,flower-2,footprints,hourglass,moon,snowflake,sparkles,sun,sunset,telescope,trees,triangle-alert,umbrella,wheat,wind}.svg",
+                                "glob": "{audio-lines,bike,cloud,cloud-drizzle,cloud-fog,cloud-hail,cloud-lightning,cloud-moon,cloud-moon-rain,cloud-rain,cloud-rain-wind,cloud-snow,cloud-sun,cloud-sun-rain,flower-2,footprints,hourglass,moon,snowflake,sparkles,sun,sunset,telescope,trash-2,trees,triangle-alert,umbrella,wheat,wind}.svg",
                                 "input": "node_modules/lucide-static/icons",
                                 "output": "assets/icons"
                             }

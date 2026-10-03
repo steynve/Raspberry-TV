@@ -50,6 +50,8 @@
     --gap: 1.5rem;
     --widget-padding: 1.25rem;
     --widget-gap: 1rem;
+    /* The now-playing card, and each column of the channel list */
+    --radio-width: 36rem;
     --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
     /* Overridden per photo on the wallpaper, see tv-wallpaper.component.scss */

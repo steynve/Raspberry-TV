@@ -23,6 +23,7 @@ export type IconName =
     | 'sun'
     | 'sunset'
     | 'telescope'
+    | 'trash-2'
     | 'trees'
     | 'triangle-alert'
     | 'umbrella'
