@@ -43,4 +43,12 @@ describe('TvService', () => {
             read((request) => request.flush('', { status: 404, statusText: 'Not Found' })),
         ).toEqual([]);
     });
+
+    it('should turn the TV on through the control on the Pi', () => {
+        service.turnOn().subscribe();
+
+        const request = httpMock.expectOne('/control/tv-on');
+        expect(request.request.method).toBe('POST');
+        request.flush('on');
+    });
 });

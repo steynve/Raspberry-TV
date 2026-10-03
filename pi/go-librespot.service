@@ -1,0 +1,17 @@
+# Spotify Connect (go-librespot), see go-librespot.yml. Installed in /etc/systemd/system/ by
+# setup.sh. Runs as pipi, in the kiosk's PulseAudio.
+[Unit]
+Description=Spotify Connect (go-librespot)
+Wants=network-online.target
+After=network-online.target sound.target avahi-daemon.service
+
+[Service]
+User=pipi
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/usr/local/bin/go-librespot --config_dir /home/pipi/.config/go-librespot
+# The kiosk's PulseAudio starts with its login, so keep trying until it's there
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

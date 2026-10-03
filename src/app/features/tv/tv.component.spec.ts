@@ -5,7 +5,6 @@ import { Component, input } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PowerStore } from '@data/stores/power.store';
-import { SpotifyStore } from '@data/stores/spotify.store';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
 
 @Component({ selector: 'app-tv-radio', template: '' })
@@ -52,16 +51,13 @@ describe('TvComponent', () => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key }));
     };
 
-    const refresh = vi.fn();
     let tvState: Observable<TvState> = EMPTY;
 
     beforeEach(() => {
         vi.useFakeTimers();
-        refresh.mockClear();
 
         TestBed.configureTestingModule({
             providers: [
-                { provide: SpotifyStore, useValue: { refresh } },
                 { provide: TvService, useValue: { getState: (): Observable<TvState> => tvState } },
             ],
         });
@@ -165,15 +161,6 @@ describe('TvComponent', () => {
             pressKey('F13');
             expect(power.awake()).toBe(true);
             expect(component.idle()).toBe(false);
-        });
-
-        it('should refresh Spotify on F15 from the Pi, without waking anything', () => {
-            vi.advanceTimersByTime(TEN_MINUTES);
-
-            pressKey('F15');
-
-            expect(refresh).toHaveBeenCalled();
-            expect(component.idle()).toBe(true);
         });
 
         it('should wake up on a remote button as well', () => {

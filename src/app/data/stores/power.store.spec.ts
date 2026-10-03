@@ -25,4 +25,18 @@ describe('PowerStore', () => {
         vi.advanceTimersByTime(0);
         expect(ticks.length).toBe(4);
     });
+
+    it('should know how long it has been asleep', () => {
+        const power = TestBed.inject(PowerStore);
+        expect(power.asleepFor()).toBe(0);
+
+        power.sleep();
+        vi.advanceTimersByTime(3000);
+        power.sleep(); // the TV says so again
+        vi.advanceTimersByTime(2000);
+        expect(power.asleepFor()).toBe(5000);
+
+        power.wake();
+        expect(power.asleepFor()).toBe(0);
+    });
 });

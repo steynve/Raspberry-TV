@@ -1,0 +1,35 @@
+# Spotify Connect: the Pi shows up as "Raspberry" in the Spotify app, like the TV or a speaker.
+# Installed as ~/.config/go-librespot/config.yml by setup.sh.
+# All options: https://github.com/devgianlu/go-librespot/blob/master/config_schema.json
+device_name: Raspberry
+device_type: tv
+bitrate: 320
+
+# Through the kiosk's PulseAudio, which mixes it with the radio in Chromium
+audio_backend: pulseaudio
+audio_backend_runtime_socket: /run/user/1000/pulse/native
+
+# The volume of the Spotify connection only, not of the Pi or the TV. Starts at full volume, and
+# the TV app sets it back to full on every new connection (see SpotifyStore).
+initial_volume: 100
+ignore_last_volume: true
+
+# Load the next or previous song right away, instead of waiting 600 ms for more presses
+skip_debounce_ms: 0
+
+# Found by phones on the network through the Pi's own mDNS daemon (avahi), and only usable by
+# whoever connects: no account is stored on the Pi
+zeroconf_enabled: true
+zeroconf_backend: avahi
+credentials:
+  type: zeroconf
+  zeroconf:
+    persist_credentials: false
+
+# The TV app reads and controls it here: REST and a WebSocket with every change, for the page on
+# http://localhost only. Bound to localhost, so nothing else on the network can reach it.
+server:
+  enabled: true
+  address: localhost
+  port: 3678
+  allow_origin: http://localhost

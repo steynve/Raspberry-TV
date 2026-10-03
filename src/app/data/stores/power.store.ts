@@ -10,12 +10,20 @@ export class PowerStore {
     public readonly awake = signal(true);
     public readonly awake$ = toObservable(this.awake);
 
+    private asleepSince = 0;
+
     public sleep(): void {
+        if (this.awake()) this.asleepSince = Date.now();
         this.awake.set(false);
     }
 
     public wake(): void {
         this.awake.set(true);
+    }
+
+    // In milliseconds, 0 while awake
+    public asleepFor(): number {
+        return this.awake() ? 0 : Date.now() - this.asleepSince;
     }
 
     // Emits right away and then every period while awake, and pauses while asleep. On waking it

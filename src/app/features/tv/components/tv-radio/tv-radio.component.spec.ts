@@ -9,7 +9,7 @@ import { SpotifyState } from '@data/models/spotify-state.model';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
 import { RadioServiceMock } from '@data/services/mocks/radio.service.mock';
-import { spotifyStateMock } from '@data/services/mocks/spotify.mock';
+import { spotifyInactiveMock, spotifyStateMock } from '@data/services/mocks/spotify.mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 @Component({ selector: 'app-tv-system', template: '' })
@@ -21,19 +21,19 @@ describe('TvRadioComponent', () => {
     let radioService: RadioServiceMock;
     let keyDownSubject: Subject<KeyboardEventKey>;
     let spotify: {
-        state: ReturnType<typeof signal<SpotifyState | undefined>>;
+        state: ReturnType<typeof signal<SpotifyState>>;
         cover: ReturnType<typeof signal<string>>;
         coverColor: ReturnType<typeof signal<string | undefined>>;
         disconnect: ReturnType<typeof vi.fn>;
     };
 
     const spotifyPlaying = (playing = true): SpotifyState =>
-        spotifyStateMock({ time: 0, playing, album: 'The Colour and the Shape' });
+        spotifyStateMock({ playing, album: 'The Colour and the Shape' });
 
     beforeEach(async () => {
         vi.useFakeTimers();
         spotify = {
-            state: signal<SpotifyState | undefined>(undefined),
+            state: signal<SpotifyState>(spotifyInactiveMock),
             cover: signal(''),
             coverColor: signal<string | undefined>(undefined),
             disconnect: vi.fn(),
@@ -159,10 +159,51 @@ describe('TvRadioComponent', () => {
             );
         });
 
+        it('should go back to the first station when the phone lets go', () => {
+            fixture.componentRef.setInput('overlay', false);
+            keyDownSubject.next('3');
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+            expect(component.isSpotify()).toBe(true);
+
+            spotify.state.set(spotifyInactiveMock);
+            fixture.detectChanges();
+
+            expect(component.nowPlayingChannelIndex()).toBe(0);
+            expect(audio().src).toBe(radioService.radioChannels[0].file);
+            expect(component.nowPlayingSong()).toBe('kink_song');
+        });
+
+        it('should wait for the TV before playing the first station again', () => {
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+            const power = TestBed.inject(PowerStore);
+            power.sleep();
+            TestBed.tick();
+            const plays = vi.mocked(HTMLMediaElement.prototype.play).mock.calls.length;
+
+            spotify.state.set(spotifyInactiveMock);
+            fixture.detectChanges();
+
+            expect(component.nowPlayingChannelIndex()).toBe(0);
+            expect(vi.mocked(HTMLMediaElement.prototype.play).mock.calls.length).toBe(plays);
+        });
+
+        it('should stay on the station that took over from Spotify', () => {
+            spotify.state.set(spotifyPlaying());
+            fixture.detectChanges();
+            component.playChannel(2);
+
+            spotify.state.set(spotifyInactiveMock);
+            fixture.detectChanges();
+
+            expect(component.nowPlayingChannelIndex()).toBe(2);
+        });
+
         it('should add Spotify songs to the history', () => {
             spotify.state.set(spotifyPlaying());
             fixture.detectChanges();
-            spotify.state.set(spotifyStateMock({ time: 0, title: 'Monkey Wrench' }));
+            spotify.state.set(spotifyStateMock({ title: 'Monkey Wrench' }));
             fixture.detectChanges();
 
             expect(component.history()[0]).toEqual(
@@ -250,7 +291,7 @@ describe('TvRadioComponent', () => {
             expect(audio().hasAttribute('src')).toBe(false);
 
             // Spotify has let go of the phone by then (see SpotifyStore)
-            spotify.state.set(spotifyPlaying(false));
+            spotify.state.set(spotifyInactiveMock);
             power.wake();
             TestBed.tick();
             expect(audio().src).toBe(radioService.radioChannels[0].file);

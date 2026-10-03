@@ -2,7 +2,7 @@
 # tty1 logs in automatically, see setup.sh.
 if [ -z "$DISPLAY" ] && [ "$(tty)" = /dev/tty1 ]; then
     # Turns TV remote buttons into key presses, started only once. cec-client also takes commands
-    # from /run/raspberry/cec, like "on 0" to turn the TV on (see spotify-event.py). Opened for
+    # from /run/raspberry/cec, like "on 0" to turn the TV on (see control-tv-on). Opened for
     # reading and writing (<>), so it never sees the end of the input when a writer is done.
     # A playback device (-t p), like a Chromecast: TVs forward more remote buttons to those than to
     # cec-client's default, a recording device. -o is the name in the TV's list of inputs.

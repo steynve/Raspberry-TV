@@ -1,0 +1,15 @@
+#!/bin/sh
+# POST /control/tv-on: turns the TV on and switches it to the Pi, like a Chromecast. The TV app
+# calls it when Spotify starts playing while the TV is off or on another input: the TV is the Pi's
+# speaker. Only the Pi itself may call it, see lighttpd.conf.
+# Installed in /usr/local/lib/raspberry/control/ by setup.sh.
+printf 'Content-Type: text/plain\r\n\r\n'
+
+# "on 0" turns on the TV (CEC address 0), "as" makes the Pi the active source: the TV switches to
+# it, and tells the app to wake up (F13, see hdmicec.sh). cec-client reads them from its pipe (see
+# bash_profile). Without cec-client, opening the pipe would wait forever: give up after 2 seconds.
+if timeout 2 sh -c 'printf "on 0\nas\n" > /run/raspberry/cec'; then
+    echo on
+else
+    echo "cec-client isn't running"
+fi

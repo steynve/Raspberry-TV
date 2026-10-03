@@ -2,7 +2,6 @@ import { SpotifyState } from '@data/models/spotify-state.model';
 
 // Everlong, playing from a phone
 export const spotifyStateMock = (overrides: Partial<SpotifyState> = {}): SpotifyState => ({
-    time: 1,
     active: true,
     playing: true,
     title: 'Everlong',
@@ -10,4 +9,12 @@ export const spotifyStateMock = (overrides: Partial<SpotifyState> = {}): Spotify
     album: '',
     cover: '',
     ...overrides,
+});
+
+// No phone connected
+export const spotifyInactiveMock: SpotifyState = spotifyStateMock({
+    active: false,
+    playing: false,
+    title: '',
+    artist: '',
 });

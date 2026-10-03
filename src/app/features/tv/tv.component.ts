@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isDigit, KeyboardEventKey, YELLOW } from '@data/models/keyboard-event-key.type';
 import { Component, DestroyRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { PowerStore } from '@data/stores/power.store';
-import { SpotifyStore } from '@data/stores/spotify.store';
 import { TvService } from '@data/services/tv.service';
 import { TvAmbientComponent } from '@features/tv/components/tv-ambient/tv-ambient.component';
 import { TvRadioComponent } from '@features/tv/components/tv-radio/tv-radio.component';
@@ -42,7 +41,6 @@ export class TvComponent implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
     private readonly activity = new Subject<void>();
     private readonly power = inject(PowerStore);
-    private readonly spotify = inject(SpotifyStore);
     private readonly tv = inject(TvService);
 
     public readonly radio = viewChild(TvRadioComponent);
@@ -74,12 +72,6 @@ export class TvComponent implements OnInit {
     public onKeyDown(event: KeyboardEvent): void {
         const key = event.key as KeyboardEventKey;
         const wasIdle = this.idle();
-
-        // F15 comes from the Pi: Spotify changed. Not a person, so it doesn't wake anything.
-        if (key === 'F15') {
-            this.spotify.refresh();
-            return;
-        }
 
         // F14 comes from the TV too: it turned off or switched away, so nobody's watching
         if (key === 'F14') {

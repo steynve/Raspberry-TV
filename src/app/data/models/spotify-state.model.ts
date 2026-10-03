@@ -1,7 +1,6 @@
-// Written by pi/spotify-event.py on every Spotify Connect event
+// What Spotify Connect on the Pi plays, see SpotifyStore
 export interface SpotifyState {
-    time: number; // unix seconds
-    active: boolean; // a phone is connected and has something loaded
+    active: boolean; // a phone is connected
     playing: boolean;
     title: string;
     artist: string;

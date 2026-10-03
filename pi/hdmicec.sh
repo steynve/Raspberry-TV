@@ -6,7 +6,7 @@
 export DISPLAY=:0
 export XAUTHORITY=/home/pipi/.Xauthority
 
-# Whether the TV shows the Pi, for spotify-event.py and the app's start: "on" or "off"
+# Whether the TV shows the Pi, for the app's start: "on" or "off"
 TV_STATE=${TV_STATE:-/run/raspberry/tv}
 # cec-client's commands, see bash_profile
 CEC_COMMANDS=${CEC_COMMANDS:-/run/raspberry/cec}

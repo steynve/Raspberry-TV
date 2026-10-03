@@ -20,9 +20,13 @@ install_file() {
 
 # Everything the kiosk needs, on a fresh Raspberry Pi OS Lite too
 packages=(xserver-xorg xinit x11-xserver-utils cec-utils xdotool lighttpd rsync alsa-utils pulseaudio)
-if apt-cache show chromium-browser > /dev/null 2>&1; then packages+=(chromium-browser); else packages+=(chromium); fi
+# Raspberry Pi's Chromium is chromium-browser on Raspberry Pi OS 11 and chromium from 12 on. Not
+# by which one exists: newer repositories still list an old chromium-browser build.
+. /etc/os-release
+if [ "$VERSION_ID" = 11 ]; then packages+=(chromium-browser); else packages+=(chromium); fi
 missing=$(dpkg-query -W -f='${Package} ${Status}\n' "${packages[@]}" 2>&1 | grep -v "install ok installed" | cut -d' ' -f1 || true)
 if [ -n "$missing" ]; then
+    apt-get update
     apt-get install -y --no-install-recommends $missing
 fi
 
@@ -48,21 +52,38 @@ if [ ! -f /etc/systemd/system/getty@tty1.service.d/autologin.conf ]; then
     raspi-config nonint do_boot_behaviour B2
 fi
 
-# Bluetooth isn't used: switching the chip off at boot saves a little power. Appended under [all],
-# so it never lands in a section for another Pi model. Wi-Fi stays on, it's the Pi's network.
+# The boot config. Each takes effect after a reboot. Appended under [all], so it never lands in a
+# section for another Pi model.
 CONFIG=/boot/firmware/config.txt
 [ -f "$CONFIG" ] || CONFIG=/boot/config.txt
+config_lines=(
+    disable_overscan=1     # the TV shows the whole picture
+    hdmi_ignore_cec_init=1 # don't switch the TV to the Pi when the Pi boots
+    dtoverlay=disable-bt   # Bluetooth isn't used: switching the chip off saves a little power
+)
+for line in "${config_lines[@]}"; do
+    if ! grep -qx "$line" "$CONFIG"; then
+        printf '\n[all]\n%s\n' "$line" >> "$CONFIG"
+        echo "Added $line to $CONFIG, takes effect after a reboot"
+    fi
+done
+# Sound only over HDMI: without the headphone jack, PulseAudio can't pick it by mistake
+if grep -qx "dtparam=audio=on" "$CONFIG"; then
+    sed -i 's/^dtparam=audio=on$/dtparam=audio=off/' "$CONFIG"
+    echo "Switched the headphone jack off in $CONFIG, takes effect after a reboot"
+fi
+# Wi-Fi stays on, it's the Pi's network
 if grep -qx "dtoverlay=disable-wifi" "$CONFIG"; then
     sed -i '/^dtoverlay=disable-wifi$/d' "$CONFIG"
     echo "Removed dtoverlay=disable-wifi from $CONFIG, takes effect after a reboot"
 fi
-if ! grep -qx "dtoverlay=disable-bt" "$CONFIG"; then
-    printf '\n[all]\ndtoverlay=disable-bt\n' >> "$CONFIG"
-    echo "Added dtoverlay=disable-bt to $CONFIG, takes effect after a reboot"
-fi
 
-# No Wi-Fi power saving: on the Pi 3 it makes streams stutter and drop, see udev-wifi.rules
+# No Wi-Fi power saving: on the Pi 3 it makes streams stutter and drop, see udev-wifi.rules. From
+# Raspberry Pi OS 12 on, NetworkManager runs the Wi-Fi, and would switch it back on when it connects.
 install_file udev-wifi.rules /etc/udev/rules.d/70-raspberry-wifi.rules 644 || true
+if [ -d /etc/NetworkManager/conf.d ]; then
+    install_file networkmanager-wifi.conf /etc/NetworkManager/conf.d/raspberry-wifi.conf 644 || true
+fi
 if /usr/sbin/iw dev wlan0 get power_save 2> /dev/null | grep -q on; then
     /usr/sbin/iw dev wlan0 set power_save off
     echo "Switched Wi-Fi power saving off"
@@ -74,47 +95,66 @@ if [ "$(raspi-config nonint get_wifi_country 2> /dev/null)" != "$WIFI_COUNTRY" ]
     raspi-config nonint do_wifi_country "$WIFI_COUNTRY"
 fi
 
-# Live files in RAM (health.json, spotify.json), served as /live/
+# mDNS (raspberrypi.local, and Spotify Connect's "Raspberry") over IPv4 only. Over IPv6, the Wi-Fi
+# echoes the Pi's own announcement back, and avahi takes it for another device with the same name:
+# it renamed the Pi to raspberrypi-2.local at every boot. go-librespot registers with avahi, so it
+# registers again after the restart.
+AVAHI_CONF=/etc/avahi/avahi-daemon.conf
+if grep -q "^#\?use-ipv6=yes" "$AVAHI_CONF"; then
+    sed -i 's/^#\?use-ipv6=yes/use-ipv6=no/' "$AVAHI_CONF"
+    systemctl restart avahi-daemon
+    systemctl try-restart go-librespot
+    echo "Switched mDNS over IPv6 off"
+fi
+
+# Live files in RAM (health.json), served as /live/
 if install_file tmpfiles.conf /etc/tmpfiles.d/raspberry.conf 644; then
     systemd-tmpfiles --create /etc/tmpfiles.d/raspberry.conf
 fi
 
-# Spotify Connect: spotifyd, pinned to a release and checked against its SHA-512 before it's used.
-# Its prebuilt aarch64 binary is linked against Debian 11's glibc and OpenSSL, so it runs here as is.
-SPOTIFYD_VERSION=0.4.2
-SPOTIFYD_SHA512=23d7f48a05895b25722c467178d17c6c3f1e67efe0e2eea42a5362d61f0b46927635cc30d61ef64f7e1147523fafbaeda8bda9afe36cebccb704bdaf3d9a61e9
+# Spotify Connect: go-librespot, pinned to a release and checked against its SHA-512 before it's
+# used. A static Go binary that only needs ALSA, so it runs on any Raspberry Pi OS.
+GO_LIBRESPOT_VERSION=0.10.3
+GO_LIBRESPOT_SHA512=54fd1dd435db6040dbd1a98a6ec256109a2a2a5c06023c9116ce954901b7d9eefa771e5c8a6013418ce5aca91bfc8b5524231013e412e03f5a055142fb7290d0
+GO_LIBRESPOT_INSTALLED=/usr/local/lib/raspberry/go-librespot.sha512
 spotify_changed=
-if [ "$(/usr/local/bin/spotifyd --version 2> /dev/null)" != "spotifyd $SPOTIFYD_VERSION" ]; then
+if [ "$(cat "$GO_LIBRESPOT_INSTALLED" 2> /dev/null)" != "$GO_LIBRESPOT_SHA512" ]; then
     download=$(mktemp -d)
-    curl -fsSL -o "$download/spotifyd.tar.gz" \
-        "https://github.com/Spotifyd/spotifyd/releases/download/v$SPOTIFYD_VERSION/spotifyd-linux-aarch64-default.tar.gz"
-    echo "$SPOTIFYD_SHA512  $download/spotifyd.tar.gz" | sha512sum --check --quiet
-    tar -xzf "$download/spotifyd.tar.gz" -C "$download"
-    install -m 755 "$download/spotifyd" /usr/local/bin/spotifyd
+    curl -fsSL -o "$download/go-librespot.tar.gz" \
+        "https://github.com/devgianlu/go-librespot/releases/download/v$GO_LIBRESPOT_VERSION/go-librespot_linux_arm64.tar.gz"
+    echo "$GO_LIBRESPOT_SHA512  $download/go-librespot.tar.gz" | sha512sum --check --quiet
+    tar -xzf "$download/go-librespot.tar.gz" -C "$download"
+    install -m 755 "$download/go-librespot" /usr/local/bin/go-librespot
+    mkdir -p "$(dirname "$GO_LIBRESPOT_INSTALLED")"
+    echo "$GO_LIBRESPOT_SHA512" > "$GO_LIBRESPOT_INSTALLED"
     rm -rf "$download"
-    echo "Installed spotifyd $SPOTIFYD_VERSION"
+    echo "Installed go-librespot $GO_LIBRESPOT_VERSION"
     spotify_changed=1
 fi
-# spotifyd runs the hook fresh on every event, so a new hook needs no restart (which would cut off
-# whoever is listening)
-install_file spotify-event.py /usr/local/bin/raspberry-spotify 755 || true
-install_file spotify-disconnect.sh /usr/local/bin/raspberry-spotify-disconnect 755 || true
-install_file control-spotify-disconnect /usr/local/lib/raspberry/control/spotify-disconnect 755 || true
-# Replaced by the disconnect: the app no longer only pauses
-rm -f /usr/local/bin/raspberry-spotify-pause /usr/local/lib/raspberry/control/spotify-pause
-if install_file spotifyd.service /etc/systemd/system/spotifyd.service 644; then
+# Its own directory, where it also keeps its state
+install -d -o "$USER_NAME" -g "$USER_NAME" "$HOME_DIR/.config" "$HOME_DIR/.config/go-librespot"
+install_file go-librespot.yml "$HOME_DIR/.config/go-librespot/config.yml" 644 "$USER_NAME" && spotify_changed=1
+if install_file go-librespot.service /etc/systemd/system/go-librespot.service 644; then
     systemctl daemon-reload
     spotify_changed=1
 fi
-# A broken sudoers file locks sudo, so it's checked before it's installed
-if ! cmp -s sudoers /etc/sudoers.d/raspberry; then
-    visudo -cqf sudoers
-    install -m 440 -o root -g root sudoers /etc/sudoers.d/raspberry
-    echo "Updated /etc/sudoers.d/raspberry"
+install_file control-tv-on /usr/local/lib/raspberry/control/tv-on 755 || true
+
+# Before go-librespot: spotifyd, with hooks that wrote spotify.json and a sudo rule to disconnect
+if [ -f /etc/systemd/system/spotifyd.service ]; then
+    systemctl disable --now spotifyd
+    rm -f /etc/systemd/system/spotifyd.service /usr/local/bin/spotifyd \
+        /usr/local/bin/raspberry-spotify /usr/local/bin/raspberry-spotify-disconnect \
+        /usr/local/lib/raspberry/control/spotify-disconnect /etc/sudoers.d/raspberry \
+        /run/raspberry/spotify.json /run/raspberry/spotify.lock
+    rm -rf "$HOME_DIR/.cache/spotifyd"
+    systemctl daemon-reload
+    echo "Removed spotifyd"
 fi
-systemctl enable --quiet spotifyd
+
+systemctl enable --quiet go-librespot
 if [ -n "$spotify_changed" ]; then
-    systemctl restart spotifyd
+    systemctl restart go-librespot
 fi
 
 # The Pi's health, every minute

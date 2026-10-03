@@ -1,4 +1,2 @@
 # The TV app's live files, every minute. Installed in /etc/cron.d/raspberry-health by setup.sh.
 * * * * * root /usr/local/bin/raspberry-health
-# Re-reads Spotify from spotifyd, in case an event was missed (see spotify-event.py)
-* * * * * pipi PLAYER_EVENT=sync /usr/local/bin/raspberry-spotify

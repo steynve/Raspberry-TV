@@ -1,4 +1,4 @@
-import { catchError, distinctUntilChanged, EMPTY, skip, Subject } from 'rxjs';
+import { catchError, distinctUntilChanged, EMPTY, pairwise, skip, Subject } from 'rxjs';
 import { NowPlaying } from '@data/models/radio-channel.model';
 import { RadioService } from '@data/services/radio.service';
 import { PowerStore } from '@data/stores/power.store';
@@ -87,7 +87,7 @@ export class TvRadioComponent implements OnInit {
 
     // The playing indicator: the stream on this page, or Spotify on the Pi
     public readonly isPlaying = computed(() =>
-        this.isSpotify() ? !!this.spotify.state()?.playing : this.playing(),
+        this.isSpotify() ? this.spotify.state().playing : this.playing(),
     );
 
     // Only Spotify has covers, the stations' APIs don't
@@ -105,7 +105,7 @@ export class TvRadioComponent implements OnInit {
 
         const state = this.spotify.state();
 
-        return state?.active ? { song: state.title, artist: state.artist } : undefined;
+        return state.active ? { song: state.title, artist: state.artist } : undefined;
     });
 
     public readonly nowPlayingSong = computed(() => this.track()?.song ?? '');
@@ -132,13 +132,19 @@ export class TvRadioComponent implements OnInit {
         this.destroyRef.onDestroy(() => clearTimeout(this.typingTimer));
 
         // Casting from the Spotify app takes over from the radio, like switching to a channel. Also
-        // while the TV is off: when casting turns it on (see pi/spotify-event.py), Spotify is
-        // already the channel and the radio stays quiet.
+        // while the TV is off: when casting turns it on (see SpotifyStore), Spotify is already the
+        // channel and the radio stays quiet.
         toObservable(this.spotify.state)
-            .pipe(takeUntilDestroyed())
-            .subscribe((state) => {
-                if (state?.playing) {
+            .pipe(pairwise(), takeUntilDestroyed())
+            .subscribe(([previous, state]) => {
+                if (state.playing) {
                     this.switchToSpotify();
+                }
+
+                // The phone let go of the Pi: back to the first station
+                if (previous.active && !state.active && this.isSpotify()) {
+                    if (this.power.awake()) this.playChannel(0);
+                    else this.leaveSpotify();
                 }
 
                 this.recordSong();
@@ -258,7 +264,7 @@ export class TvRadioComponent implements OnInit {
 
         // A radio station takes over from Spotify: let go of the phone, like a Bluetooth speaker
         // that's switched off, so the two never play at the same time
-        if (!this.isSpotify() && this.spotify.state()?.active) {
+        if (!this.isSpotify() && this.spotify.state().active) {
             this.spotify.disconnect();
         }
 
