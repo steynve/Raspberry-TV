@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RainSlot, rainSummary, upcomingRain } from './rain';
-import { OpenMeteoForecastMinutely15 } from '@data/models/openmeteo-forecast-minutely15.model';
+import { OpenMeteoForecastMinutely15 } from '@data/models/openmeteo.model';
 
 // Nine quarters of an hour from 12:00, with the given precipitation in mm per 15 minutes
 const slots = (...precipitation: number[]): RainSlot[] =>
@@ -14,10 +14,10 @@ describe('upcomingRain()', () => {
         const date = new Date(2026, 2, 1, 11, index * 15);
         return `2026-03-01T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     });
-    const minutely15 = new OpenMeteoForecastMinutely15(
-        times,
-        times.map((_, index) => index / 10),
-    );
+    const minutely15: OpenMeteoForecastMinutely15 = {
+        time: times,
+        precipitation: times.map((_, index) => index / 10),
+    };
 
     it('should start at the current quarter of an hour and span 2 hours', () => {
         const result = upcomingRain(minutely15, new Date(2026, 2, 1, 11, 20));

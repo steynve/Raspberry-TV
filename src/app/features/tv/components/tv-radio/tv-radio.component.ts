@@ -1,7 +1,5 @@
 import { catchError, distinctUntilChanged, EMPTY, skip, Subject } from 'rxjs';
-import { DNB } from '@data/models/dnb.model';
-import { Kink } from '@data/models/kink.model';
-import { Flux } from '@data/models/flux.model';
+import { NowPlaying } from '@data/models/radio-channel.model';
 import { RadioService } from '@data/services/radio.service';
 import { PowerStore } from '@data/stores/power.store';
 import { SpotifyStore } from '@data/stores/spotify.store';
@@ -57,7 +55,7 @@ export class TvRadioComponent implements OnInit {
     public readonly overlay = input(false);
 
     public readonly radioChannels = this.radioService.radioChannels;
-    public readonly nowPlaying = signal<Kink | Flux | DNB | undefined>(undefined);
+    public readonly nowPlaying = signal<NowPlaying | undefined>(undefined);
     public readonly nowPlayingChannelIndex = signal(0);
     public readonly selectedChannelIndex = signal(0);
     public readonly playing = signal(false);
@@ -101,51 +99,17 @@ export class TvRadioComponent implements OnInit {
         this.isSpotify() ? this.spotify.coverColor() : undefined,
     );
 
-    public readonly nowPlayingSong = computed(() => {
-        if (this.isSpotify()) {
-            const state = this.spotify.state();
-            return state?.active ? state.title : '';
-        }
+    // The song from the station's API, or from Spotify on the Pi
+    private readonly track = computed<NowPlaying | undefined>(() => {
+        if (!this.isSpotify()) return this.nowPlaying();
 
-        const nowPlaying = this.nowPlaying();
+        const state = this.spotify.state();
 
-        if (nowPlaying instanceof Kink) {
-            return nowPlaying.extended[this.nowPlayingChannel().apiRef].title;
-        }
-
-        if (nowPlaying instanceof Flux) {
-            return nowPlaying.trackInfo.title;
-        }
-
-        if (nowPlaying instanceof DNB) {
-            return nowPlaying.title;
-        }
-
-        return '';
+        return state?.active ? { song: state.title, artist: state.artist } : undefined;
     });
 
-    public readonly nowPlayingArtist = computed(() => {
-        if (this.isSpotify()) {
-            const state = this.spotify.state();
-            return state?.active ? state.artist : '';
-        }
-
-        const nowPlaying = this.nowPlaying();
-
-        if (nowPlaying instanceof Kink) {
-            return nowPlaying.extended[this.nowPlayingChannel().apiRef].artist;
-        }
-
-        if (nowPlaying instanceof Flux) {
-            return nowPlaying.trackInfo.artistCredits;
-        }
-
-        if (nowPlaying instanceof DNB) {
-            return nowPlaying.artist;
-        }
-
-        return '';
-    });
+    public readonly nowPlayingSong = computed(() => this.track()?.song ?? '');
+    public readonly nowPlayingArtist = computed(() => this.track()?.artist ?? '');
 
     constructor() {
         afterNextRender(() => this.startRadio());

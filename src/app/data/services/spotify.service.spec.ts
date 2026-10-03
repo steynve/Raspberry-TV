@@ -3,6 +3,7 @@ import { SpotifyService } from './spotify.service';
 import { provideHttpClient } from '@angular/common/http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SpotifyState } from '@data/models/spotify-state.model';
+import { spotifyStateMock } from './mocks/spotify.mock';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 describe('SpotifyService', () => {
@@ -25,16 +26,9 @@ describe('SpotifyService', () => {
 
         const request = httpMock.expectOne((req) => req.url === '/live/spotify.json');
         expect(request.request.params.get('t')).toMatch(/^\d+$/);
-        request.flush({
-            time: 1,
-            active: true,
-            playing: true,
-            title: 'Everlong',
-            artist: 'Foo Fighters',
-            album: '',
-        });
+        request.flush(spotifyStateMock());
 
-        expect(result).toEqual(new SpotifyState(1, true, true, 'Everlong', 'Foo Fighters', ''));
+        expect(result).toEqual(spotifyStateMock());
     });
 
     it('should disconnect through the control on the Pi', () => {

@@ -1,6 +1,6 @@
 import { SunState } from './sun';
 import { averageCloudCover } from './outdoors';
-import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
+import { OpenMeteoForecast } from '@data/models/openmeteo.model';
 
 export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
 

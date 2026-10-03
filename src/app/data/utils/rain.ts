@@ -1,5 +1,5 @@
 import { formatTime } from './time';
-import { OpenMeteoForecastMinutely15 } from '@data/models/openmeteo-forecast-minutely15.model';
+import { OpenMeteoForecastMinutely15 } from '@data/models/openmeteo.model';
 
 export interface RainSlot {
     time: Date;

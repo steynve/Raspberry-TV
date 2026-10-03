@@ -4,7 +4,6 @@ import { TestBed } from '@angular/core/testing';
 import { OpenMeteoService } from '@data/services/openmeteo.service';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { airQualityMock, forecastMock } from '@data/services/mocks/openmeteo.mock';
-import { OpenMeteoAirqualityService } from '@data/services/openmeteo-airquality.service';
 
 describe('WeatherStore', () => {
     const getForecast = vi.fn(() => of(forecastMock));
@@ -17,10 +16,7 @@ describe('WeatherStore', () => {
         getAirQuality.mockClear();
 
         TestBed.configureTestingModule({
-            providers: [
-                { provide: OpenMeteoService, useValue: { getForecast } },
-                { provide: OpenMeteoAirqualityService, useValue: { getAirQuality } },
-            ],
+            providers: [{ provide: OpenMeteoService, useValue: { getForecast, getAirQuality } }],
         });
     });
 

@@ -1,59 +1,33 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Observable, of } from 'rxjs';
-import { DNB } from '../../models/dnb.model';
-import { Kink } from '../../models/kink.model';
-import { Flux } from '../../models/flux.model';
-import { FluxArtist } from '../../models/flux-artists.model';
-import { RadioChannel } from '../../models/radio-channel.model';
-import { FluxTrackInfo } from '../../models/flux-track-info.model';
+import { NowPlaying, RadioChannel } from '@data/models/radio-channel.model';
 
 export class RadioServiceMock {
-    public kinkResponse = new Kink(
+    public nowPlaying: NowPlaying = { song: 'kink_song', artist: 'kink_artist' };
+
+    public radioChannels: RadioChannel[] = [
         {
-            kink: 'kink_song - kink_artist',
+            file: 'http://website.com/api/KINK.mp3',
+            visibleName: 'KINK',
+            apiSrc: 'KINK',
+            apiRef: 'kink',
         },
-        'kink_song - kink_artist',
         {
-            kink: {
-                artist: 'kink_artist',
-                title: 'kink_song',
-            },
+            file: 'http://website.com/api/flux.mp3',
+            visibleName: 'FLUX',
+            apiSrc: 'FLUX',
+            apiRef: '4885aa15-eecb-49ed-9958-106ce4c95191',
         },
-        false,
-    );
-
-    public fluxResponse = new Flux(
-        new FluxTrackInfo('flux_song', 'flux_artistCredits', [new FluxArtist('flux_artist')]),
-    );
-
-    public dnbResponse = new DNB('dnb_song', 'dnb_artist');
-
-    public radioChannels = [
-        new RadioChannel('http://website.com/api/KINK.mp3', 'KINK', 'KINK', 'kink'),
-        new RadioChannel(
-            'http://website.com/api/flux.mp3',
-            'FLUX',
-            'FLUX',
-            '4885aa15-eecb-49ed-9958-106ce4c95191',
-        ),
-        new RadioChannel('http://website.com/api/dnb.mp3', 'DNB', 'DNB', ''),
-        new RadioChannel('http://website.com/api/none.mp3', 'NONE', 'NONE', ''),
-        new RadioChannel('', 'Spotify', 'SPOTIFY', ''),
+        { file: 'http://website.com/api/dnb.mp3', visibleName: 'DNB', apiSrc: 'DNB', apiRef: '' },
+        {
+            file: 'http://website.com/api/none.mp3',
+            visibleName: 'NONE',
+            apiSrc: 'NONE',
+            apiRef: '',
+        },
+        { file: '', visibleName: 'Spotify', apiSrc: 'SPOTIFY', apiRef: '' },
     ];
 
-    public getNowPlaying(radioChannel: RadioChannel): Observable<Kink | Flux | DNB> {
-        return this.getNowPlayingKink();
-    }
-
-    public getNowPlayingKink(): Observable<Kink | Flux | DNB> {
-        return of(this.kinkResponse);
-    }
-
-    public getNowPlayingFlux(channel: string): Observable<Kink | Flux | DNB> {
-        return of(this.fluxResponse);
-    }
-
-    public getNowPlayingDNB(): Observable<Kink | Flux | DNB> {
-        return of(this.dnbResponse);
+    public getNowPlaying(): Observable<NowPlaying> {
+        return of(this.nowPlaying);
     }
 }

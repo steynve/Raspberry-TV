@@ -17,10 +17,7 @@ export type KeyboardEventKey =
 // The colour buttons. Not F1 to F4, which Chromium keeps for itself (F1 opens its help).
 export type ColourKey = 'F16' | 'F17' | 'F18' | 'F19';
 
-export const RED: ColourKey = 'F16';
-export const GREEN: ColourKey = 'F17';
 export const YELLOW: ColourKey = 'F18';
-export const BLUE: ColourKey = 'F19';
 
 export type Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
 

@@ -1,6 +1,5 @@
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
-import { OpenMeteoForecastDaily } from '@data/models/openmeteo-forecast-daily.model';
-import { OpenMeteoForecastHourly } from '@data/models/openmeteo-forecast-hourly.model';
+import { OpenMeteoForecastDaily, OpenMeteoForecastHourly } from '@data/models/openmeteo.model';
 
 const MINUTE = 1000 * 60;
 const HALF_HOUR = MINUTE * 30;

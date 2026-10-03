@@ -7,17 +7,17 @@ import { TvSkyComponent } from './tv-sky.component';
 import { ClockStore } from '@data/stores/clock.store';
 import { WeatherStore } from '@data/stores/weather.store';
 import { AuroraStore } from '@data/stores/aurora.store';
-import { KpForecast } from '@data/models/kp-forecast.model';
+import { KpBlock } from '@data/models/kp-forecast.model';
 import { forecastMock } from '@data/services/mocks/openmeteo.mock';
 
 describe('TvSkyComponent', () => {
     // Kp 7.33 from 21:00 until midnight local time
-    const aurora = new KpForecast([{ start: new Date(2026, 2, 1, 21), kp: 7.33 }]);
+    const aurora: KpBlock[] = [{ start: new Date(2026, 2, 1, 21), kp: 7.33 }];
 
     const sky = (element: HTMLElement): string | undefined =>
         element.querySelector('.sky')?.textContent?.trim();
 
-    const render = (now: Date, kp: KpForecast = new KpForecast([])): HTMLElement => {
+    const render = (now: Date, kp: KpBlock[] = []): HTMLElement => {
         TestBed.configureTestingModule({
             providers: [
                 { provide: AuroraStore, useValue: { forecast: signal(kp) } },

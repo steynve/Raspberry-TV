@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { forecastDailyMock } from '@data/services/mocks/openmeteo.mock';
-import { OpenMeteoForecastHourly } from '@data/models/openmeteo-forecast-hourly.model';
+import { OpenMeteoForecastHourly } from '@data/models/openmeteo.model';
 import { daylightChange, stargazingWindow, sunsetColour } from './sky';
 
 const home = { lat: 52.72, lon: 6.46 };
@@ -14,18 +14,17 @@ interface Hour {
     rain?: number;
 }
 
-const hourly = (hours: Hour[]): OpenMeteoForecastHourly =>
-    new OpenMeteoForecastHourly(
-        hours.map((hour) => hour.time),
-        hours.map((hour) => hour.rain ?? 0),
-        hours.map(() => 0),
-        hours.map((hour) => hour.clouds ?? 0),
-        hours.map(() => 0),
-        hours.map(() => 0),
-        hours.map((hour) => hour.low ?? 0),
-        hours.map((hour) => hour.mid ?? 0),
-        hours.map((hour) => hour.high ?? 0),
-    );
+const hourly = (hours: Hour[]): OpenMeteoForecastHourly => ({
+    time: hours.map((hour) => hour.time),
+    precipitation: hours.map((hour) => hour.rain ?? 0),
+    et0_fao_evapotranspiration: hours.map(() => 0),
+    cloud_cover: hours.map((hour) => hour.clouds ?? 0),
+    wind_gusts_10m: hours.map(() => 0),
+    precipitation_probability: hours.map(() => 0),
+    cloud_cover_low: hours.map((hour) => hour.low ?? 0),
+    cloud_cover_mid: hours.map((hour) => hour.mid ?? 0),
+    cloud_cover_high: hours.map((hour) => hour.high ?? 0),
+});
 
 // Every hour from `from` on the given day, into the next morning
 const night = (day: string, next: string, clouds: (hour: number) => number): Hour[] =>

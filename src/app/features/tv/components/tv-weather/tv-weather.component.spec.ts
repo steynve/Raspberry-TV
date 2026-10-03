@@ -8,8 +8,8 @@ import { TvRainComponent } from '../tv-rain/tv-rain.component';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TvForecastComponent } from '../tv-forecast/tv-forecast.component';
-import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
-import { OpenMeteoAirQuality } from '@data/models/openmeteo-airquality.model';
+import { OpenMeteoForecast } from '@data/models/openmeteo.model';
+import { OpenMeteoAirQuality } from '@data/models/openmeteo.model';
 import { airQualityMock, forecastMock } from '@data/services/mocks/openmeteo.mock';
 
 @Component({ selector: 'app-tv-rain', template: '' })
@@ -121,9 +121,7 @@ describe('TvWeatherComponent', () => {
 
     describe('pollen', () => {
         it('should score each group by its highest pollen type', () => {
-            expect(component.pollenGroupScore('tree')).toBe(4);
-            expect(component.pollenGroupScore('grass')).toBe(0);
-            expect(component.pollenGroupScore('weed')).toBe(10);
+            expect(component.pollen().map((item) => item.score)).toEqual([4, 0, 10]);
         });
 
         it('should render every group and mark the ones without pollen', () => {
@@ -139,7 +137,7 @@ describe('TvWeatherComponent', () => {
             airQuality.set(undefined);
             fixture.detectChanges();
 
-            expect(component.pollenGroupScore('tree')).toBe(0);
+            expect(component.pollen()).toEqual([]);
             expect(element().querySelector('.pollen')).toBeNull();
         });
     });

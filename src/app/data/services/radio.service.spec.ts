@@ -1,7 +1,7 @@
 import { RadioService } from './radio.service';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { RadioChannel } from '../models/radio-channel.model';
+import { NowPlaying, RadioChannel } from '../models/radio-channel.model';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
@@ -23,26 +23,45 @@ describe('RadioService', () => {
 
     afterEach(() => httpMock.verify());
 
-    it('should request KINK now playing', () => {
-        service.getNowPlaying(channel('KINK')).subscribe();
+    it("should read KINK's song for the station", () => {
+        let result: NowPlaying | undefined;
+        service.getNowPlaying(channel('KINK')).subscribe((nowPlaying) => (result = nowPlaying));
 
-        httpMock.expectOne('https://api.kink.nl/static/now-playing.json').flush({});
+        httpMock.expectOne('https://api.kink.nl/static/now-playing.json').flush({
+            playing: 'kink_song - kink_artist',
+            extended: { kink: { title: 'kink_song', artist: 'kink_artist' } },
+        });
+
+        expect(result).toEqual({ song: 'kink_song', artist: 'kink_artist' });
     });
 
-    it('should request FLUX now playing for the channel', () => {
+    it("should read FLUX's song for the channel", () => {
         const flux = channel('FLUX');
-
-        service.getNowPlaying(flux).subscribe();
+        let result: NowPlaying | undefined;
+        service.getNowPlaying(flux).subscribe((nowPlaying) => (result = nowPlaying));
 
         httpMock
             .expectOne(`https://fluxmusic.api.radiosphere.io/channels/${flux.apiRef}/current-track`)
-            .flush({});
+            .flush({
+                trackInfo: {
+                    title: 'flux_song',
+                    artistCredits: 'flux_artistCredits',
+                    artists: [{ name: 'flux_artist' }],
+                },
+            });
+
+        expect(result).toEqual({ song: 'flux_song', artist: 'flux_artistCredits' });
     });
 
-    it('should request DNB now playing', () => {
-        service.getNowPlaying(channel('DNB')).subscribe();
+    it("should read DNB's song", () => {
+        let result: NowPlaying | undefined;
+        service.getNowPlaying(channel('DNB')).subscribe((nowPlaying) => (result = nowPlaying));
 
-        httpMock.expectOne('https://api.dnbradio.nl/now_playing').flush({});
+        httpMock
+            .expectOne('https://api.dnbradio.nl/now_playing')
+            .flush({ title: 'dnb_song', artist: 'dnb_artist' });
+
+        expect(result).toEqual({ song: 'dnb_song', artist: 'dnb_artist' });
     });
 
     it('should not request anything for channels without an API', () => {

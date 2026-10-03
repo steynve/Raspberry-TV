@@ -1,25 +1,15 @@
 import { Observable } from 'rxjs';
-import { Injectable } from '@angular/core';
-import { HttpService } from './http.service';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
 import { PiHealth } from '@data/models/pi-health.model';
-import { PiHealthSerializer } from '@data/serializers/pi-health.serializer';
 
 // Same origin as the app, so no CORS: lighttpd serves the Pi's live files under /live/
-@Injectable({
-    providedIn: 'root',
-})
-export class PiHealthService extends HttpService<PiHealth> {
-    constructor() {
-        super();
-
-        this.setBaseUrl('/');
-        this.setResource('live/health.json');
-        this.setSerializer(new PiHealthSerializer());
-    }
+@Injectable({ providedIn: 'root' })
+export class PiHealthService {
+    private readonly http = inject(HttpClient);
 
     public getHealth(): Observable<PiHealth> {
         // The file changes every minute, so never let the browser serve it from its cache
-        this.setParams({ t: Date.now() });
-        return this.read();
+        return this.http.get<PiHealth>('/live/health.json', { params: { t: Date.now() } });
     }
 }

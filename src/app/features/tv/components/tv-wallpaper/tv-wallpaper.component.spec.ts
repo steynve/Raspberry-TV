@@ -6,11 +6,10 @@ import { PexelsService } from '@data/services/pexels.service';
 import { WeatherStore } from '@data/stores/weather.store';
 import { TvWallpaperComponent } from './tv-wallpaper.component';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
+import { OpenMeteoForecast } from '@data/models/openmeteo.model';
 import { PexelsServiceMock } from '@data/services/mocks/pexels.service.mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { forecastMock } from '@data/services/mocks/openmeteo.mock';
-import { OpenMeteoForecastCurrent } from '@data/models/openmeteo-forecast-current.model';
 
 describe('TvWallpaperComponent', () => {
     let component: TvWallpaperComponent;
@@ -19,13 +18,10 @@ describe('TvWallpaperComponent', () => {
     let forecast: ReturnType<typeof signal<OpenMeteoForecast | undefined>>;
     let sun: ReturnType<typeof signal<SunState | undefined>>;
 
-    const withWeatherCode = (code: number): OpenMeteoForecast =>
-        new OpenMeteoForecast(
-            new OpenMeteoForecastCurrent('2026-07-15T12:00', 900, 20, 10, 180, 1, code),
-            forecastMock.daily,
-            forecastMock.minutely_15,
-            forecastMock.hourly,
-        );
+    const withWeatherCode = (code: number): OpenMeteoForecast => ({
+        ...forecastMock,
+        current_weather: { ...forecastMock.current_weather, weathercode: code },
+    });
 
     // toObservable() runs as a view effect, so change detection passes the new mood on
     const advance = (ms: number, target = fixture): void => {

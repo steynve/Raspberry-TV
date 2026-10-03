@@ -1,10 +1,10 @@
-import { KpForecast } from '@data/models/kp-forecast.model';
+import { KpBlock } from '@data/models/kp-forecast.model';
 
 const BLOCK = 1000 * 60 * 60 * 3; // NOAA reports Kp per 3 hours
 
 // The highest Kp in any block that overlaps the window
-export const maxKp = (forecast: KpForecast, start: Date, end: Date): number | undefined => {
-    const values = forecast.blocks
+export const maxKp = (forecast: KpBlock[], start: Date, end: Date): number | undefined => {
+    const values = forecast
         .filter(
             (block) =>
                 block.start.getTime() < end.getTime() &&

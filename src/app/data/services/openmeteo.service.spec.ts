@@ -37,4 +37,17 @@ describe('OpenMeteoService', () => {
 
         request.flush(JSON.parse(JSON.stringify(forecastMock)));
     });
+
+    it('should request the pollen for the configured location', () => {
+        service.getAirQuality().subscribe();
+
+        const request = httpMock.expectOne(
+            (req) => req.url === 'https://air-quality-api.open-meteo.com/v1/air-quality',
+        );
+
+        expect(request.request.params.get('latitude')).toBe(environment.open_meteo_lat);
+        expect(request.request.params.get('current')).toContain('birch_pollen');
+
+        request.flush({});
+    });
 });

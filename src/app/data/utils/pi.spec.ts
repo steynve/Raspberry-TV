@@ -1,24 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { piHealthMock } from '@data/services/mocks/pi-health.mock';
-import { formatUptime, memoryUsed, minutesSince, piAlerts, throttledState } from './pi';
+import { formatUptime, memoryUsed, minutesSince, piAlerts } from './pi';
 
 describe('pi', () => {
     const now = new Date(2026, 2, 1, 12, 0, 30);
-
-    it('should read the throttled flags', () => {
-        expect(throttledState('0x0')).toEqual({
-            underVoltage: false,
-            throttled: false,
-            underVoltageOccurred: false,
-        });
-        expect(throttledState('0x50005')).toEqual({
-            underVoltage: true,
-            throttled: true,
-            underVoltageOccurred: true,
-        });
-        expect(throttledState('0x50000')?.underVoltageOccurred).toBe(true);
-        expect(throttledState('unknown')).toBeUndefined();
-    });
 
     it('should calculate the memory in use', () => {
         expect(memoryUsed(piHealthMock())).toBeCloseTo(0.4347, 3);
@@ -53,12 +38,18 @@ describe('pi', () => {
         expect(piAlerts(piHealthMock(), later)).toEqual(['No measurement for 7 min']);
     });
 
+    it('should only warn about power that is a problem right now', () => {
+        // Under-voltage and throttling since boot, but not anymore
+        expect(piAlerts(piHealthMock({ throttled: '0x50000' }), now)).toEqual([]);
+    });
+
     it('should cope with readings the Pi could not take', () => {
         const health = piHealthMock({
             temperature: null,
             disk: null,
             memoryAvailable: null,
             load: null,
+            throttled: 'unknown',
         });
 
         expect(piAlerts(health, now)).toEqual([]);

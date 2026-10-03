@@ -18,18 +18,16 @@
     font-size: calc(min(100vw / 120, 100vh / 67.5) * var(--ui-scale));
 
     /* Type scale, in px on the 1080p TV at a scale of 0.7 */
-    --text-label: 1.5rem; /* 17px, uppercase widget titles */
-    --text-meta: 1.625rem; /* 18px, secondary lines */
-    --text-body: 1.875rem; /* 21px */
-    --text-lead: 2.25rem; /* 25px, the one sentence that matters in a widget */
-    --text-title: 2.75rem; /* 31px, the song */
-    --text-display: 5.5rem; /* 62px, the temperature */
-    --text-clock: 11rem; /* 123px */
+    --text-label: 1.375rem; /* 15px, widget titles */
+    --text-meta: 1.5rem; /* 17px, secondary lines */
+    --text-body: 1.75rem; /* 20px */
+    --text-lead: 2.125rem; /* 24px, the one sentence that matters in a widget */
+    --text-title: 2.5rem; /* 28px, the song */
+    --text-display: 5rem; /* 56px, the temperature */
+    --text-clock: 10rem; /* 112px */
 
-    /* Inter: the open font closest to Apple's San Francisco, which may only be used on Apple's own
-       devices. Its optical size axis draws big text tighter, like SF Pro Display, and small text
-       more open, like SF Pro Text. */
-    --font-sans: 'Inter Variable', system-ui, sans-serif;
+    /* Fira Code (github.com/tonsky/FiraCode), with its ligatures */
+    --font: 'Fira Code Variable', ui-monospace, monospace;
 
     --fg: oklch(0.98 0.005 95);
     /* Secondary text needs more contrast from the couch than on a desk */
@@ -43,19 +41,18 @@
     /* The channel sheet moves, so it can't use the photo glass, see tv-radio.component.scss */
     --sheet-bg: linear-gradient(oklch(0.19 0.01 95), oklch(0.14 0.01 95));
 
-    /* Liquid Glass rounds more than the macOS before it */
-    --radius-lg: 2.25rem;
-    --radius-md: 1.125rem;
-    /* Spacing, on one scale: 0.25, 0.5, 0.75, 1, 1.5 and 2rem inside widgets, 1.5rem between them
-       and 3.5rem from the edge of the screen. Widgets have the same padding on every side. */
+    /* Editor windows have square-ish corners */
+    --radius-lg: 0.75rem;
+    --radius-md: 0.5rem;
+    /* Spacing, on one scale: 0.25, 0.5, 0.75, 1, 1.25, 1.5 and 2rem inside widgets, 1.5rem between
+       them and 3.5rem from the edge of the screen. Widgets have the same padding on every side. */
     --edge: 3.5rem;
     --gap: 1.5rem;
-    --widget-padding: 1.5rem;
+    --widget-padding: 1.25rem;
     --widget-gap: 1rem;
     --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
-    /* Overridden per photo on the wallpaper, see tv-wallpaper.component.scss, unless a theme sets
-       --theme-accent. A theme sets --theme-fg-night and the like for after sunset. */
+    /* Overridden per photo on the wallpaper, see tv-wallpaper.component.scss */
     --accent: oklch(0.86 0.07 145);
     --rain: oklch(0.78 0.11 235);
     --cold: oklch(0.8 0.09 230);
@@ -64,7 +61,8 @@
 }
 
 html {
-    font-family: var(--font-sans);
+    font-family: var(--font);
+    font-variant-ligatures: contextual;
     line-height: 1.4;
     color: var(--fg);
     -webkit-font-smoothing: antialiased;

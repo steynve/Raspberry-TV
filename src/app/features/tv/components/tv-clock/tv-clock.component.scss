@@ -5,22 +5,22 @@
     text-shadow: var(--shadow-text);
 }
 
-// Like the macOS lock screen: the date small and semibold above a big, heavy clock
+// The date is a comment: "// Tuesday 29 September". Fira Code joins the two slashes.
 .date {
     font-size: var(--text-body);
-    font-weight: 600;
+    font-weight: 450;
     color: var(--fg-muted);
+
+    &::before {
+        content: '// ';
+    }
 }
 
-// The clock looks cut from glass: a fill that fades a little towards the bottom. The text shadow
-// still shows through it, which gives it depth.
+// In a light weight: monospace digits are wide
 .time {
     font-size: var(--text-clock);
-    font-weight: 600;
+    font-weight: 300;
     line-height: 0.9;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.06em;
     font-variant-numeric: tabular-nums;
-    background: linear-gradient(to bottom, var(--fg) 30%, oklch(from var(--fg) l c h / 0.72));
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
 }

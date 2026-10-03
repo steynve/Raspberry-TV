@@ -1,16 +1,10 @@
-import { AbstractModel } from './abstract.model';
-
 // Written by pi/spotify-event.py on every Spotify Connect event
-export class SpotifyState extends AbstractModel {
-    constructor(
-        public time: number, // unix seconds
-        public active: boolean, // a phone is connected and has something loaded
-        public playing: boolean,
-        public title: string,
-        public artist: string,
-        public album: string,
-        public cover = '', // URL of the album cover
-    ) {
-        super();
-    }
+export interface SpotifyState {
+    time: number; // unix seconds
+    active: boolean; // a phone is connected and has something loaded
+    playing: boolean;
+    title: string;
+    artist: string;
+    album: string;
+    cover: string; // URL of the album cover
 }

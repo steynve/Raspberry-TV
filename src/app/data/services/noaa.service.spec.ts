@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { NoaaService } from './noaa.service';
 import { provideHttpClient } from '@angular/common/http';
-import { KpForecast } from '@data/models/kp-forecast.model';
+import { KpBlock } from '@data/models/kp-forecast.model';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
@@ -20,7 +20,7 @@ describe('NoaaService', () => {
     afterEach(() => httpMock.verify());
 
     it('should fetch the Kp forecast and read the times as UTC', () => {
-        let result: KpForecast | undefined;
+        let result: KpBlock[] | undefined;
         service.getKpForecast().subscribe((forecast) => (result = forecast));
 
         httpMock
@@ -36,6 +36,6 @@ describe('NoaaService', () => {
                 },
             ]);
 
-        expect(result?.blocks).toEqual([{ start: new Date(Date.UTC(2026, 2, 1, 21)), kp: 7.33 }]);
+        expect(result).toEqual([{ start: new Date(Date.UTC(2026, 2, 1, 21)), kp: 7.33 }]);
     });
 });

@@ -1,6 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { IconComponent } from '@shared/components/icon/icon.component';
-import { OpenMeteoForecastDaily } from '@data/models/openmeteo-forecast-daily.model';
+import { OpenMeteoForecastDaily } from '@data/models/openmeteo.model';
 import { WeatherCondition, weatherCondition } from '@data/constants/weather-conditions';
 
 export interface ForecastDay {

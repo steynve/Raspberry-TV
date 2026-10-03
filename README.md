@@ -17,7 +17,7 @@ The screen is a full-screen photo with the clock top-left, what's playing top-ri
 | Now          | Temperature, conditions, wind and gusts, trail conditions, the best time to ride, whether it stays dry, UV from 5, and tree/grass/weed pollen on a 0–10 scale                                                                                                                                                  | [Open-Meteo](https://open-meteo.com/) forecast and air quality                                   | Every 5 minutes             |
 | Next 2 hours | Only when rain is coming: when it starts or stops, with a precipitation profile in 15 minute steps                                                                                                                                                                                                             | Open-Meteo                                                                                       | Every 5 minutes             |
 | This week    | Five days with conditions, chance of rain and temperature range                                                                                                                                                                                                                                                | Open-Meteo                                                                                       | Every 5 minutes             |
-| Raspberry Pi | Temperature, load, memory, storage, power and uptime in the channel list, and a warning top-right when something is wrong                                                                                                                                                                                      | `health.json`, written by `pi/pi-health.sh`                                                      | Every minute                |
+| Raspberry Pi | Temperature, load, memory, storage and uptime in the channel list, and a warning top-right when something is wrong                                                                                                                                                                                             | `health.json`, written by `pi/pi-health.sh`                                                      | Every minute                |
 
 The trail conditions are an estimate: a water balance over the last 48 hours, where rain adds water and evaporation (ET₀) removes it. 1 mm or more left means "wet", 4 mm or more "muddy". Tune the thresholds in `src/app/data/utils/outdoors.ts` to your local trails.
 
@@ -59,11 +59,13 @@ It runs on [spotifyd](https://github.com/Spotifyd/spotifyd), whose prebuilt bina
 
 ### Sleep
 
-When the TV turns off or switches to another input, nobody can see the Pi or hear it (its sound goes through the TV). `pi/hdmicec.sh` then sends F14, and the app goes to sleep: it shows the idle screen, drops the radio stream and pauses all polling (weather, song info, northern lights, Pi health). Chromium keeps running, so when the TV comes back the dashboard is there within a fraction of a second, the stream restarts and everything refreshes right away. The bridge also notes what the TV said last in `/run/raspberry/tv`, which the app reads when it starts: the TV often reports its state while the Pi boots, before Chromium is there to hear the key press. Measured on the Pi, the CPU goes from 8.5% to 2.6% busy and the sound card closes. Together with the Bluetooth chip switched off (see below), that saves a few tenths of a watt: modest, because an idle Pi 3 itself still draws around 2 W.
+When the TV turns off or switches to another input, nobody can see the Pi or hear it (its sound goes through the TV). `pi/hdmicec.sh` then sends F14, and the app goes to sleep: it shows the idle screen, drops the radio stream and pauses all polling (weather, song info, northern lights, Pi health). Chromium keeps running, so when the TV comes back the dashboard is there within a fraction of a second, the stream restarts and everything refreshes right away. The bridge also notes what the TV said last in `/run/raspberry/tv`, which the app reads when it starts: the TV often reports its state while the Pi boots, before Chromium is there to hear the key press. Measured on the Pi, the CPU goes from 8.5% to 2.6% busy and the sound card closes. Together with the Bluetooth chip switched off (see below), that saves a few tenths of a watt: modest, because an idle Pi 3 itself still draws around 2 W, about €5 of electricity a year.
+
+The Pi can't sleep any deeper than that. A Raspberry Pi has no suspend to RAM or hibernation, so the only lower state is off, and from off it takes about 30 seconds to boot (28 measured with `systemd-analyze`) before Chromium even starts. Its USB bus can't be switched off either: the Pi boots from a USB stick.
 
 The Pi's HDMI output stays on: on the Pi, CEC runs through the HDMI hardware, so switching it off could stop the Pi from ever hearing the TV turn on again.
 
-All APIs are called directly from the browser, so any new data source must allow cross-origin requests (CORS). There is no proxy. Fonts ([Inter](https://rsms.me/inter/) and [Fira Code](https://github.com/tonsky/FiraCode)) and icons ([Lucide](https://lucide.dev/)) are bundled from npm, so nothing else is loaded from third parties.
+All APIs are called directly from the browser, so any new data source must allow cross-origin requests (CORS). There is no proxy. The font ([Fira Code](https://github.com/tonsky/FiraCode)) and icons ([Lucide](https://lucide.dev/)) are bundled from npm, so nothing else is loaded from third parties.
 
 ### Remote control
 
@@ -74,27 +76,20 @@ All APIs are called directly from the browser, so any new data source must allow
 | Up / Down         | –                                                     | Move the highlight                       |
 | Numbers           | Play that station number (not sent by the TCL 50C61K) | Same                                     |
 | Channel up / down | Next or previous station (not sent by the TCL either) | Same                                     |
-| Red               | Glass theme                                           | Same                                     |
-| Green             | Code theme                                            | Same                                     |
+| Red               | Free                                                  | –                                        |
+| Green             | Free                                                  | –                                        |
 | Yellow            | Back to the previous station, and forth again         | Same                                     |
 | Blue              | Free                                                  | –                                        |
 
 Numbers work like a TV, on a keyboard or a TV that sends them over HDMI-CEC (the TCL 50C61K sends the arrows, OK, Back and the colour buttons, but not numbers): a digit that can't start a longer number plays right away (with 14 stations, 2 to 9), otherwise the app waits 1.5 seconds for a second digit (1, then 4 for Spotify). The typed number shows in the now-playing card.
 
-On the idle screen any button brings the dashboard back, and the music keeps playing throughout. Numbers, channel up and down and the colour buttons also act on that first press, because they say exactly what they want.
+On the idle screen any button brings the dashboard back, and the music keeps playing throughout. Numbers, channel up and down and the yellow button also act on that first press, because they say exactly what they want.
 
-### Themes
+### Look
 
-Two looks, picked with the red and green buttons. Each press shows both for a moment, with the current one marked. The browser remembers the choice until Chromium restarts; the default is `'glass'` in `src/app/data/stores/theme.store.ts`.
+VS Code on a Mac, connected to the Pi: every widget is an editor window with macOS's traffic lights and its path as the title (`~/weather`), in [Fira Code](https://github.com/tonsky/FiraCode) with its ligatures. The lights are grey, as for a window that isn't focused, except on the channel list. The date is a comment (`// Tuesday 29 September`). The colours are calm enough for the living room, with an accent that takes the colour of the photo.
 
-| Button | Theme | What it looks like                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Red    | Glass | macOS's Liquid Glass: frosted glass widgets with a rim that catches the light, larger rounded corners, a heavy clock with a glassy fill, and an accent that takes the colour of the photo. In [Inter](https://rsms.me/inter/), the open font closest to Apple's San Francisco (which may only be used on Apple's own devices), with its optical sizes like SF Pro Display and Text                                          |
-| Green  | Code  | VS Code on a Mac, connected to the Pi: every widget an editor window with macOS's traffic lights and its path as the title (`~/weather`), in [Fira Code](https://github.com/tonsky/FiraCode) with its ligatures. The lights are grey, as for a window that isn't focused, except on the channel list. The date is a comment (`// Tuesday 29 September`). The colours are the glass theme's, calm enough for the living room |
-
-The Code windows are the same frosted glass as the Glass theme, so they take on the photo's colours and light instead of sitting on top of it as dark boxes. The weather windows leave out their titles: the title bar already names them.
-
-Each theme's look is in `src/styles/`: Glass is the base (`base/tokens.scss`, `components/widget.scss`), Code is one stylesheet on top (`themes/code.scss`, on `data-theme="code"` on `<html>`). It sets the design tokens (colours, fonts, corners) and adds its touches with pseudo-elements and `attr()`, so no component knows about themes.
+The windows are frosted glass, so they take on the photo's colours and light instead of sitting on top of it as dark boxes. The weather windows have no headings of their own: the title bar already names them. The design tokens (colours, font, sizes, corners) are in `src/styles/base/tokens.scss`, the window with its title bar in `src/styles/components/widget.scss`.
 
 `pi/hdmicec.sh` turns the remote's colour buttons into F16 to F19 (red, green, yellow, blue), because Chromium keeps F1 to F4 for itself. Buttons the TV sends that do nothing yet are logged: `journalctl -t raspberry-cec` on the Pi shows their names.
 

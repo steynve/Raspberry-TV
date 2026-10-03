@@ -1,20 +1,16 @@
 import { sunState } from './sun';
 import { describe, expect, it } from 'vitest';
 import { season, wallpaperMood, wallpaperQuery } from './wallpaper';
-import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
+import { OpenMeteoForecast } from '@data/models/openmeteo.model';
 import { forecastMock, forecastHourlyMock } from '@data/services/mocks/openmeteo.mock';
-import { OpenMeteoForecastHourly } from '@data/models/openmeteo-forecast-hourly.model';
-import { OpenMeteoForecastCurrent } from '@data/models/openmeteo-forecast-current.model';
 
 describe('wallpaper', () => {
     const day = sunState(forecastMock.daily, new Date(2026, 2, 1, 12));
-    const withCode = (code: number, hourly = forecastMock.hourly): OpenMeteoForecast =>
-        new OpenMeteoForecast(
-            new OpenMeteoForecastCurrent('2026-03-01T12:00', 900, 10, 10, 180, 1, code),
-            forecastMock.daily,
-            forecastMock.minutely_15,
-            hourly,
-        );
+    const withCode = (code: number, hourly = forecastMock.hourly): OpenMeteoForecast => ({
+        ...forecastMock,
+        current_weather: { ...forecastMock.current_weather, weathercode: code },
+        hourly,
+    });
 
     it('should follow the weather', () => {
         expect(wallpaperMood(withCode(0), day)).toBe('sunny');
@@ -31,17 +27,7 @@ describe('wallpaper', () => {
             ...sunState(forecastMock.daily, new Date(2026, 2, 1, 22)),
             night: { start: new Date(2026, 2, 1, 12), end: new Date(2026, 2, 1, 14) },
         };
-        const cloudy = new OpenMeteoForecastHourly(
-            forecastHourlyMock.time,
-            forecastHourlyMock.precipitation,
-            forecastHourlyMock.et0_fao_evapotranspiration,
-            [100, 100, 100, 100],
-            forecastHourlyMock.wind_gusts_10m,
-            forecastHourlyMock.precipitation_probability,
-            forecastHourlyMock.cloud_cover_low,
-            forecastHourlyMock.cloud_cover_mid,
-            forecastHourlyMock.cloud_cover_high,
-        );
+        const cloudy = { ...forecastHourlyMock, cloud_cover: [100, 100, 100, 100] };
 
         // The mock's cloud cover between 12:00 and 14:00 is 15%
         expect(wallpaperMood(withCode(0), night)).toBe('clear-night');

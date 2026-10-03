@@ -80,6 +80,8 @@
     inset-inline-end: var(--edge);
     z-index: 2;
     display: grid;
+    // The title bar is the first row, only as tall as it needs
+    grid-template-rows: auto 1fr;
     grid-template-columns: repeat(2, var(--radio-width));
     gap: 2rem;
     inline-size: auto;

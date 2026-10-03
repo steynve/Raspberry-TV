@@ -1,6 +1,5 @@
 import { Subject } from 'rxjs';
 import { Component, signal } from '@angular/core';
-import { Kink } from '@data/models/kink.model';
 import { TvRadioComponent } from './tv-radio.component';
 import { TvSystemComponent } from '../tv-system/tv-system.component';
 import { RadioService } from '@data/services/radio.service';
@@ -10,6 +9,7 @@ import { SpotifyState } from '@data/models/spotify-state.model';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { KeyboardEventKey } from '@data/models/keyboard-event-key.type';
 import { RadioServiceMock } from '@data/services/mocks/radio.service.mock';
+import { spotifyStateMock } from '@data/services/mocks/spotify.mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 @Component({ selector: 'app-tv-system', template: '' })
@@ -28,7 +28,7 @@ describe('TvRadioComponent', () => {
     };
 
     const spotifyPlaying = (playing = true): SpotifyState =>
-        new SpotifyState(0, true, playing, 'Everlong', 'Foo Fighters', 'The Colour and the Shape');
+        spotifyStateMock({ time: 0, playing, album: 'The Colour and the Shape' });
 
     beforeEach(async () => {
         vi.useFakeTimers();
@@ -68,8 +68,8 @@ describe('TvRadioComponent', () => {
     const audio = (): HTMLAudioElement => fixture.nativeElement.querySelector('audio');
 
     // Every API response is a new object, like the real thing
-    const playOnKink = (title: string, artist: string): void => {
-        radioService.kinkResponse = new Kink({}, '', { kink: { title, artist } }, false);
+    const playOnKink = (song: string, artist: string): void => {
+        radioService.nowPlaying = { song, artist };
     };
 
     it('should start the first channel after the first render', () => {
@@ -162,7 +162,7 @@ describe('TvRadioComponent', () => {
         it('should add Spotify songs to the history', () => {
             spotify.state.set(spotifyPlaying());
             fixture.detectChanges();
-            spotify.state.set(new SpotifyState(0, true, true, 'Monkey Wrench', 'Foo Fighters', ''));
+            spotify.state.set(spotifyStateMock({ time: 0, title: 'Monkey Wrench' }));
             fixture.detectChanges();
 
             expect(component.history()[0]).toEqual(
@@ -420,25 +420,11 @@ describe('TvRadioComponent', () => {
     });
 
     describe('nowPlayingSong / nowPlayingArtist', () => {
-        it('should read KINK responses', () => {
-            component.nowPlaying.set(radioService.kinkResponse);
+        it("should show the station's song", () => {
+            component.nowPlaying.set({ song: 'kink_song', artist: 'kink_artist' });
 
             expect(component.nowPlayingSong()).toBe('kink_song');
             expect(component.nowPlayingArtist()).toBe('kink_artist');
-        });
-
-        it('should read FLUX responses', () => {
-            component.nowPlaying.set(radioService.fluxResponse);
-
-            expect(component.nowPlayingSong()).toBe('flux_song');
-            expect(component.nowPlayingArtist()).toBe('flux_artistCredits');
-        });
-
-        it('should read DNB responses', () => {
-            component.nowPlaying.set(radioService.dnbResponse);
-
-            expect(component.nowPlayingSong()).toBe('dnb_song');
-            expect(component.nowPlayingArtist()).toBe('dnb_artist');
         });
 
         it('should return empty strings when nothing is known', () => {

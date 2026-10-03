@@ -1,19 +1,10 @@
-import { map, merge, startWith, Subject, switchMap, timer } from 'rxjs';
+import { startWith, Subject, switchMap, timer } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-    BLUE,
-    GREEN,
-    isDigit,
-    KeyboardEventKey,
-    RED,
-    YELLOW,
-} from '@data/models/keyboard-event-key.type';
+import { isDigit, KeyboardEventKey, YELLOW } from '@data/models/keyboard-event-key.type';
 import { Component, DestroyRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { PowerStore } from '@data/stores/power.store';
 import { SpotifyStore } from '@data/stores/spotify.store';
 import { TvService } from '@data/services/tv.service';
-import { ThemeStore } from '@data/stores/theme.store';
-import { TvThemeSwitcherComponent } from '@features/tv/components/tv-theme-switcher/tv-theme-switcher.component';
 import { TvAmbientComponent } from '@features/tv/components/tv-ambient/tv-ambient.component';
 import { TvRadioComponent } from '@features/tv/components/tv-radio/tv-radio.component';
 import { TvSkyComponent } from '@features/tv/components/tv-sky/tv-sky.component';
@@ -25,13 +16,10 @@ import { TvWallpaperComponent } from '@features/tv/components/tv-wallpaper/tv-wa
 // Without a key press for this long, the dashboard gives way to the ambient screen
 const IDLE_AFTER = 1000 * 60 * 10; // 10 minutes
 
-// How long the theme options show after a colour button
-const SHOW_THEMES = 2500;
-
-// Numbers, channel up and down and the colour buttons say exactly what they want, so they act
-// on the first press, even on the idle screen. Other keys only wake the dashboard first.
+// Numbers, channel up and down and the yellow button say exactly what they want, so they act on
+// the first press, even on the idle screen. Other keys only wake the dashboard first.
 const isDirect = (key: KeyboardEventKey): boolean =>
-    isDigit(key) || [RED, GREEN, YELLOW, BLUE, 'PageUp', 'PageDown'].includes(key);
+    isDigit(key) || [YELLOW, 'PageUp', 'PageDown'].includes(key);
 
 @Component({
     selector: 'app-tv',
@@ -45,7 +33,6 @@ const isDirect = (key: KeyboardEventKey): boolean =>
         TvWeatherComponent,
         TvWallpaperComponent,
         TvAmbientComponent,
-        TvThemeSwitcherComponent,
     ],
     host: {
         '(window:keydown)': 'onKeyDown($event)',
@@ -57,14 +44,11 @@ export class TvComponent implements OnInit {
     private readonly power = inject(PowerStore);
     private readonly spotify = inject(SpotifyStore);
     private readonly tv = inject(TvService);
-    private readonly themes = inject(ThemeStore);
-    private readonly themePicked = new Subject<void>();
 
     public readonly radio = viewChild(TvRadioComponent);
     public readonly keyDownSubject = new Subject<KeyboardEventKey>();
     public readonly overlay = signal(false);
     public readonly idle = signal(false);
-    public readonly showThemes = signal(false);
 
     // Back closes the channel list, or else goes to the idle screen right away
     public back(): void {
@@ -111,6 +95,9 @@ export class TvComponent implements OnInit {
             return;
         }
 
+        if (key === 'Backspace') this.back();
+        if (key === 'Enter') this.toggleOverlayVisibility();
+
         this.keyDownSubject.next(key);
     }
 
@@ -127,46 +114,8 @@ export class TvComponent implements OnInit {
             .subscribe(() => this.goIdle());
     }
 
-    public listenForKeyDown(): void {
-        this.keyDownSubject
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe((key: KeyboardEventKey) => {
-                if (key === 'Backspace') {
-                    this.back();
-                }
-
-                if (key === 'Enter') {
-                    this.toggleOverlayVisibility();
-                }
-
-                const theme = this.themes.themeFor(key);
-
-                if (theme) {
-                    this.themes.theme.set(theme);
-                    this.themePicked.next();
-                }
-            });
-    }
-
-    // Every colour button shows the options again, for a moment
-    public listenForThemes(): void {
-        this.themePicked
-            .pipe(
-                switchMap(() =>
-                    merge(
-                        timer(0).pipe(map(() => true)),
-                        timer(SHOW_THEMES).pipe(map(() => false)),
-                    ),
-                ),
-                takeUntilDestroyed(this.destroyRef),
-            )
-            .subscribe((show) => this.showThemes.set(show));
-    }
-
     public ngOnInit(): void {
-        this.listenForKeyDown();
         this.listenForActivity();
-        this.listenForThemes();
 
         // Starting while the TV is off, like after a reboot: go straight to sleep
         this.tv

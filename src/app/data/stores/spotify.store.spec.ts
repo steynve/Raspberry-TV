@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { SpotifyStore } from './spotify.store';
 import { PowerStore } from './power.store';
 import { SpotifyService } from '@data/services/spotify.service';
-import { SpotifyState } from '@data/models/spotify-state.model';
+import { spotifyStateMock } from '@data/services/mocks/spotify.mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('SpotifyStore', () => {
@@ -13,7 +13,7 @@ describe('SpotifyStore', () => {
         vi.advanceTimersByTime(0);
     };
 
-    const playing = new SpotifyState(1, true, true, 'Everlong', 'Foo Fighters', '');
+    const playing = spotifyStateMock();
     const getState = vi.fn(() => of(playing));
     const disconnect = vi.fn(() => of('disconnected'));
 
@@ -30,7 +30,7 @@ describe('SpotifyStore', () => {
     afterEach(() => vi.useRealTimers());
 
     it('should keep the newest answer when refreshes overlap at a track change', () => {
-        const next = new SpotifyState(2, true, true, 'Monkey Wrench', 'Foo Fighters', '');
+        const next = spotifyStateMock({ time: 2, title: 'Monkey Wrench' });
         const store = TestBed.inject(SpotifyStore);
         settle();
 
@@ -68,7 +68,9 @@ describe('SpotifyStore', () => {
 
     it('should correct a stale "not playing" at the next check', () => {
         // The Pi wrote "not playing" at an unlucky moment, and no event followed to fix it
-        getState.mockImplementationOnce(() => of(new SpotifyState(1, false, false, '', '', '')));
+        getState.mockImplementationOnce(() =>
+            of(spotifyStateMock({ active: false, playing: false, title: '', artist: '' })),
+        );
         const store = TestBed.inject(SpotifyStore);
         settle();
         expect(store.state()?.playing).toBe(false);
@@ -88,15 +90,13 @@ describe('SpotifyStore', () => {
 
     it('should ask for the smaller cover, and only while something is loaded', () => {
         const cover = 'https://i.scdn.co/image/ab67616d0000b273abc';
-        getState.mockImplementation(() =>
-            of(new SpotifyState(1, true, true, 'Everlong', 'Foo Fighters', '', cover)),
-        );
+        getState.mockImplementation(() => of(spotifyStateMock({ cover })));
         const store = TestBed.inject(SpotifyStore);
         settle();
         expect(store.cover()).toBe('https://i.scdn.co/image/ab67616d00001e02abc');
 
         getState.mockImplementation(() =>
-            of(new SpotifyState(2, false, false, 'Everlong', 'Foo Fighters', '', cover)),
+            of(spotifyStateMock({ time: 2, active: false, playing: false, cover })),
         );
         store.refresh();
         expect(store.cover()).toBe('');
@@ -126,9 +126,7 @@ describe('SpotifyStore', () => {
     });
 
     it('should also let go of a phone that is connected but paused', () => {
-        getState.mockImplementation(() =>
-            of(new SpotifyState(1, true, false, 'Everlong', 'Foo Fighters', '')),
-        );
+        getState.mockImplementation(() => of(spotifyStateMock({ playing: false })));
         TestBed.inject(SpotifyStore);
         const power = TestBed.inject(PowerStore);
         settle();
@@ -140,7 +138,9 @@ describe('SpotifyStore', () => {
     });
 
     it('should leave Spotify alone when no phone is connected', () => {
-        getState.mockImplementation(() => of(new SpotifyState(1, false, false, '', '', '')));
+        getState.mockImplementation(() =>
+            of(spotifyStateMock({ active: false, playing: false, title: '', artist: '' })),
+        );
         TestBed.inject(SpotifyStore);
         const power = TestBed.inject(PowerStore);
         settle();

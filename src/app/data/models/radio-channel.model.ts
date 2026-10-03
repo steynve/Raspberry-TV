@@ -1,12 +1,12 @@
-import { AbstractModel } from './abstract.model';
+export interface RadioChannel {
+    file: string; // the stream
+    visibleName: string; // HTML: KINK writes its K mirrored, see station.scss
+    apiSrc: 'KINK' | 'FLUX' | 'DNB' | 'NONE' | 'SPOTIFY'; // where the song comes from
+    apiRef: string; // the station at that API
+}
 
-export class RadioChannel extends AbstractModel {
-    constructor(
-        public file: string,
-        public visibleName: string,
-        public apiSrc: 'KINK' | 'FLUX' | 'DNB' | 'NONE' | 'SPOTIFY',
-        public apiRef: string,
-    ) {
-        super();
-    }
+// The song on a station right now
+export interface NowPlaying {
+    song: string;
+    artist: string;
 }

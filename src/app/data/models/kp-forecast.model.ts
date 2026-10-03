@@ -1,13 +1,6 @@
-import { AbstractModel } from './abstract.model';
-
+// NOAA's planetary K-index, per block of 3 hours: observed for the past week, predicted for the
+// next 3 days
 export interface KpBlock {
-    start: Date; // a block covers 3 hours
+    start: Date;
     kp: number;
-}
-
-// NOAA's planetary K-index: observed for the past week, predicted for the next 3 days
-export class KpForecast extends AbstractModel {
-    constructor(public blocks: KpBlock[]) {
-        super();
-    }
 }

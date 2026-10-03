@@ -3,7 +3,7 @@ import { catchError, EMPTY, switchMap } from 'rxjs';
 import { Injectable, inject, signal } from '@angular/core';
 import { NoaaService } from '@data/services/noaa.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { KpForecast } from '@data/models/kp-forecast.model';
+import { KpBlock } from '@data/models/kp-forecast.model';
 
 const REFRESH = 1000 * 60 * 30; // 30 minutes, NOAA updates the forecast a few times a day
 
@@ -12,7 +12,7 @@ export class AuroraStore {
     private readonly noaaService = inject(NoaaService);
     private readonly power = inject(PowerStore);
 
-    public readonly forecast = signal<KpForecast | undefined>(undefined);
+    public readonly forecast = signal<KpBlock[] | undefined>(undefined);
 
     constructor() {
         this.power

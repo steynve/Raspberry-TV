@@ -1,4 +1,4 @@
-import { OpenMeteoForecastDaily } from '@data/models/openmeteo-forecast-daily.model';
+import { OpenMeteoForecastDaily } from '@data/models/openmeteo.model';
 
 export type SunPhase = 'day' | 'golden-hour' | 'night';
 
@@ -13,14 +13,17 @@ export interface SunState {
 
 const GOLDEN_HOUR = 60; // minutes before sunset
 
+// "2026-03-01T07:00" → "07:00"
+const clockTime = (time: string): string => time.split('T')[1];
+
 export const sunState = (daily: OpenMeteoForecastDaily, now: Date): SunState => {
     const time = now.getTime();
-    const beforeSunrise = time < daily.sunriseTodayTimestamp;
-    const afterSunset = time >= daily.sunsetTodayTimestamp;
+    const sunrise = new Date(daily.sunrise[0]).getTime();
+    const sunset = new Date(daily.sunset[0]).getTime();
+    const beforeSunrise = time < sunrise;
+    const afterSunset = time >= sunset;
     const daylightLeft =
-        beforeSunrise || afterSunset
-            ? 0
-            : Math.round((daily.sunsetTodayTimestamp - time) / (1000 * 60));
+        beforeSunrise || afterSunset ? 0 : Math.round((sunset - time) / (1000 * 60));
 
     return {
         phase:
@@ -29,14 +32,11 @@ export const sunState = (daily: OpenMeteoForecastDaily, now: Date): SunState => 
                 : daylightLeft <= GOLDEN_HOUR
                   ? 'golden-hour'
                   : 'day',
-        sunset: daily.sunsetToday,
-        nextSunrise: beforeSunrise ? daily.sunriseToday : daily.sunriseTomorrow,
+        sunset: clockTime(daily.sunset[0]),
+        nextSunrise: clockTime(daily.sunrise[beforeSunrise ? 0 : 1]),
         daylightLeft,
         night: beforeSunrise
-            ? { start: now, end: new Date(daily.sunriseTodayTimestamp) }
-            : {
-                  start: new Date(Math.max(time, daily.sunsetTodayTimestamp)),
-                  end: new Date(daily.sunriseTomorrowTimestamp),
-              },
+            ? { start: now, end: new Date(sunrise) }
+            : { start: new Date(Math.max(time, sunset)), end: new Date(daily.sunrise[1]) },
     };
 };

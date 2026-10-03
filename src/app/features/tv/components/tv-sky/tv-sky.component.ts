@@ -83,10 +83,7 @@ export class TvSkyComponent {
         const notes: SkyNote[] = [];
 
         if (sun.phase !== 'night') {
-            const colour = sunsetColour(
-                forecast.hourly,
-                new Date(forecast.daily.sunsetTodayTimestamp),
-            );
+            const colour = sunsetColour(forecast.hourly, new Date(forecast.daily.sunset[0]));
 
             if (colour) {
                 notes.push({

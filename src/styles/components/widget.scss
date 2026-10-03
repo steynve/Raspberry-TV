@@ -1,37 +1,61 @@
-/* A pane of glass, in the spirit of macOS's Liquid Glass.
-   A real backdrop-filter is too heavy for a Raspberry Pi 3. Instead, the card shows a 48px copy of
-   the wallpaper (set as --photo-blurred), fixed to the viewport so it lines up with the photo behind.
-   Stretching it that far blurs it, so it looks like frosted glass at no cost. On top: a soft sheen
-   at the top, and a rim along the edge that catches the light, brightest at the top left. All of it
-   static, so the Pi paints it once. */
+/* VS Code on a Mac, connected to the Pi: every widget is an editor window with macOS's traffic
+   lights and its path as the title ("~/weather"), set with data-path.
+   The windows are frosted glass, so they take on the photo's colours and light. A real
+   backdrop-filter is too heavy for a Raspberry Pi 3. Instead, the window shows a 48px copy of the
+   wallpaper (set as --photo-blurred), fixed to the viewport so it lines up with the photo behind.
+   Stretching it that far blurs it at no cost, and it's static, so the Pi paints it once. */
 .widget {
     display: flex;
     flex-direction: column;
     gap: var(--widget-gap);
     padding: var(--widget-padding);
-    border: 1px solid transparent;
+    border: 1px solid var(--glass-edge);
     border-radius: var(--radius-lg);
     background:
-        linear-gradient(to bottom, oklch(1 0 0 / 0.09), transparent 45%) padding-box,
-        linear-gradient(var(--glass-bg), var(--glass-bg)) padding-box,
-        var(--photo-blurred, none) center / cover no-repeat fixed padding-box,
-        linear-gradient(
-                155deg,
-                oklch(1 0 0 / 0.5),
-                oklch(1 0 0 / 0.1) 30%,
-                oklch(1 0 0 / 0.04) 60%,
-                oklch(1 0 0 / 0.22)
-            )
-            border-box;
+        linear-gradient(var(--glass-bg), var(--glass-bg)),
+        var(--photo-blurred, none) center / cover no-repeat fixed;
     box-shadow: 0 1.5rem 3rem -1.5rem oklch(0 0 0 / 0.5);
 }
 
-// Small and semibold, in sentence case, like the labels in macOS
+// The window's title bar: a shade of the same glass, with its path and macOS's traffic lights,
+// drawn as gradients. Grey, like the lights of a window that isn't focused: only the station list
+// has colour, it's the window you're working in when it's open. The bar spans the widget's
+// padding, and leaves as much room below it as on the sides.
+.widget[data-path]::before {
+    --light-close: oklch(1 0 0 / 0.22);
+    --light-minimise: oklch(1 0 0 / 0.22);
+    --light-zoom: oklch(1 0 0 / 0.22);
+
+    content: attr(data-path);
+    grid-column: 1 / -1;
+    margin: calc(var(--widget-padding) * -1) calc(var(--widget-padding) * -1)
+        calc(var(--widget-padding) - var(--widget-gap));
+    padding: 0.5rem 1rem;
+    border-start-start-radius: inherit;
+    border-start-end-radius: inherit;
+    border-block-end: 1px solid var(--glass-edge);
+    background:
+        radial-gradient(circle at 1.25rem 50%, var(--light-close) 0.35rem, transparent 0.4rem),
+        radial-gradient(circle at 2.25rem 50%, var(--light-minimise) 0.35rem, transparent 0.4rem),
+        radial-gradient(circle at 3.25rem 50%, var(--light-zoom) 0.35rem, transparent 0.4rem),
+        oklch(0 0 0 / 0.2);
+    font-size: var(--text-label);
+    color: var(--fg-subtle);
+    text-align: center;
+}
+
+// macOS's colours, a little softer
+.widget.channels::before {
+    --light-close: oklch(0.68 0.16 25);
+    --light-minimise: oklch(0.8 0.13 85);
+    --light-zoom: oklch(0.72 0.14 145);
+}
+
 .widget-title {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     font-size: var(--text-label);
-    font-weight: 600;
+    font-weight: 450;
     color: var(--fg-subtle);
 }

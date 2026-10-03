@@ -6,9 +6,7 @@ import { catchError, EMPTY, forkJoin, of, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OpenMeteoService } from '@data/services/openmeteo.service';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { OpenMeteoForecast } from '@data/models/openmeteo-forecast.model';
-import { OpenMeteoAirQuality } from '@data/models/openmeteo-airquality.model';
-import { OpenMeteoAirqualityService } from '@data/services/openmeteo-airquality.service';
+import { OpenMeteoAirQuality, OpenMeteoForecast } from '@data/models/openmeteo.model';
 
 const REFRESH = 1000 * 60 * 5; // 5 minutes
 
@@ -18,7 +16,6 @@ export class WeatherStore {
     private readonly clock = inject(ClockStore);
     private readonly power = inject(PowerStore);
     private readonly openMeteoService = inject(OpenMeteoService);
-    private readonly openMeteoAirqualityService = inject(OpenMeteoAirqualityService);
 
     public readonly forecast = signal<OpenMeteoForecast | undefined>(undefined);
     public readonly airQuality = signal<OpenMeteoAirQuality | undefined>(undefined);
@@ -43,7 +40,7 @@ export class WeatherStore {
                     forkJoin({
                         forecast: this.openMeteoService.getForecast(),
                         // The pollen is extra: when its API doesn't answer, the weather still shows
-                        airQuality: this.openMeteoAirqualityService
+                        airQuality: this.openMeteoService
                             .getAirQuality()
                             .pipe(catchError(() => of(undefined))),
                     }).pipe(catchError(() => EMPTY)),

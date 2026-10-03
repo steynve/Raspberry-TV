@@ -1,26 +1,16 @@
 import { Observable } from 'rxjs';
-import { Injectable } from '@angular/core';
-import { HttpService } from './http.service';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
 import { SpotifyState } from '@data/models/spotify-state.model';
-import { SpotifyStateSerializer } from '@data/serializers/spotify-state.serializer';
 
 // Spotify Connect runs on the Pi (spotifyd): this reads its state and controls it, same origin
-@Injectable({
-    providedIn: 'root',
-})
-export class SpotifyService extends HttpService<SpotifyState> {
-    constructor() {
-        super();
-
-        this.setBaseUrl('/');
-        this.setResource('live/spotify.json');
-        this.setSerializer(new SpotifyStateSerializer());
-    }
+@Injectable({ providedIn: 'root' })
+export class SpotifyService {
+    private readonly http = inject(HttpClient);
 
     public getState(): Observable<SpotifyState> {
         // The file changes with every song, so never let the browser serve it from its cache
-        this.setParams({ t: Date.now() });
-        return this.read();
+        return this.http.get<SpotifyState>('/live/spotify.json', { params: { t: Date.now() } });
     }
 
     // Pauses and lets go of the phone, see pi/spotify-disconnect.sh

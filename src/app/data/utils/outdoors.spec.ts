@@ -1,20 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { forecastDailyMock, forecastHourlyMock } from '@data/services/mocks/openmeteo.mock';
-import { OpenMeteoForecastHourly } from '@data/models/openmeteo-forecast-hourly.model';
+import { OpenMeteoForecastHourly } from '@data/models/openmeteo.model';
 import { averageCloudCover, currentGusts, rideOutlook, trailCondition } from './outdoors';
 
-const hourly = (precipitation: number[], evaporation: number[]): OpenMeteoForecastHourly =>
-    new OpenMeteoForecastHourly(
-        precipitation.map((_, index) => `2026-03-01T${String(index).padStart(2, '0')}:00`),
-        precipitation,
-        evaporation,
-        precipitation.map(() => 0),
-        precipitation.map(() => 0),
-        precipitation.map(() => 0),
-        precipitation.map(() => 0),
-        precipitation.map(() => 0),
-        precipitation.map(() => 0),
-    );
+const hourly = (precipitation: number[], evaporation: number[]): OpenMeteoForecastHourly => ({
+    time: precipitation.map((_, index) => `2026-03-01T${String(index).padStart(2, '0')}:00`),
+    precipitation,
+    et0_fao_evapotranspiration: evaporation,
+    cloud_cover: precipitation.map(() => 0),
+    wind_gusts_10m: precipitation.map(() => 0),
+    precipitation_probability: precipitation.map(() => 0),
+    cloud_cover_low: precipitation.map(() => 0),
+    cloud_cover_mid: precipitation.map(() => 0),
+    cloud_cover_high: precipitation.map(() => 0),
+});
 
 describe('trailCondition()', () => {
     const now = new Date(2026, 2, 1, 23);
@@ -80,17 +79,17 @@ describe('rideOutlook()', () => {
         );
         const values = time.map(bad);
 
-        return new OpenMeteoForecastHourly(
+        return {
             time,
-            values.map((value) => value.rain ?? 0),
-            time.map(() => 0),
-            time.map(() => 0),
-            values.map((value) => value.gusts ?? 20),
-            values.map((value) => value.chance ?? 0),
-            time.map(() => 0),
-            time.map(() => 0),
-            time.map(() => 0),
-        );
+            precipitation: values.map((value) => value.rain ?? 0),
+            et0_fao_evapotranspiration: time.map(() => 0),
+            cloud_cover: time.map(() => 0),
+            wind_gusts_10m: values.map((value) => value.gusts ?? 20),
+            precipitation_probability: values.map((value) => value.chance ?? 0),
+            cloud_cover_low: time.map(() => 0),
+            cloud_cover_mid: time.map(() => 0),
+            cloud_cover_high: time.map(() => 0),
+        };
     };
     const at = (hour: number, minute = 0): Date => new Date(2026, 2, 1, hour, minute);
 

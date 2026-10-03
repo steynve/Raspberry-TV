@@ -1,7 +1,5 @@
 @if (forecast(); as forecast) {
     <section class="widget now" data-path="~/weather">
-        <h2 class="widget-title">Now</h2>
-
         <div class="now-main">
             <span class="now-temperature"
                 >{{ forecast.current_weather.temperature.toFixed() }}°</span
@@ -26,7 +24,7 @@
 
         @if (pollen().length) {
             <ul class="pollen">
-                @for (item of pollen(); track item.group) {
+                @for (item of pollen(); track item.label) {
                     <li
                         class="pollen-item"
                         [class.none]="!item.score"

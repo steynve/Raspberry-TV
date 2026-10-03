@@ -1,7 +1,6 @@
 import { formatTime } from '@data/utils/time';
 import { Component, computed, input } from '@angular/core';
 import { RainSlot, rainSummary } from '@data/utils/rain';
-import { IconComponent } from '@shared/components/icon/icon.component';
 
 const CHART_HEIGHT = 30; // matches the SVG viewBox
 
@@ -28,7 +27,6 @@ export const smoothLine = (points: [number, number][]): string => {
     selector: 'app-tv-rain',
     templateUrl: './tv-rain.component.html',
     styleUrl: './tv-rain.component.scss',
-    imports: [IconComponent],
 })
 export class TvRainComponent {
     public readonly slots = input.required<RainSlot[]>();

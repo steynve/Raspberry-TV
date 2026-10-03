@@ -1,5 +1,4 @@
-import { OpenMeteoForecastDaily } from '@data/models/openmeteo-forecast-daily.model';
-import { OpenMeteoForecastHourly } from '@data/models/openmeteo-forecast-hourly.model';
+import { OpenMeteoForecastDaily, OpenMeteoForecastHourly } from '@data/models/openmeteo.model';
 
 export type TrailCondition = 'dry' | 'wet' | 'muddy';
 
@@ -70,11 +69,10 @@ export const rideOutlook = (
     daily: OpenMeteoForecastDaily,
     now: Date,
 ): RideOutlook => {
-    const tomorrow = now.getTime() >= daily.sunsetTodayTimestamp;
-    const light = tomorrow
-        ? new Date(daily.sunrise[1]).getTime()
-        : Math.max(now.getTime(), daily.sunriseTodayTimestamp);
-    const dark = tomorrow ? new Date(daily.sunset[1]).getTime() : daily.sunsetTodayTimestamp;
+    const tomorrow = now.getTime() >= new Date(daily.sunset[0]).getTime();
+    const day = tomorrow ? 1 : 0;
+    const light = Math.max(now.getTime(), new Date(daily.sunrise[day]).getTime());
+    const dark = new Date(daily.sunset[day]).getTime();
 
     let best: { start: number; end: number } | undefined;
     let run: { start: number; end: number } | undefined;
